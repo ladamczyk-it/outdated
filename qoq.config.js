@@ -5,6 +5,7 @@ const rules = {
 };
 
 export default {
+  stats: true,
   prettier: { sources: ['.'] },
   knip: {
     entry: ['./src/index.{js,ts}', './src/cli.{js,ts}'],
