@@ -5,7 +5,6 @@ import cac from 'cac';
 import c from 'picocolors';
 
 import { check } from './check.ts';
-import { format } from './format.ts';
 
 const cli = cac('outdated');
 
@@ -17,10 +16,13 @@ cli
     try {
       const result = await check(options.cwd ? { cwd: options.cwd } : {});
 
-      process.stdout.write(format(result, options.json ?? false));
-      process.exit(result.passed ? EExitCode.OK : EExitCode.ERROR);
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      process.exit(EExitCode.OK);
     } catch (error) {
-      process.stderr.write(`${c.red(`✖ ${error instanceof Error ? error.message : String(error)}`)}\n`);
+      const message = error instanceof Error ? error.message : String(error);
+
+      process.stderr.write(c.red(`✖ ${message}`));
+      process.stderr.write('\n');
       process.exit(EExitCode.EXCEPTION);
     }
   });
