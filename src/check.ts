@@ -1,4 +1,4 @@
-import path from 'node:path';
+import { resolve } from 'path';
 
 import { readDeps, readInstalledVersion, type IDepEntry } from './deps.ts';
 import { parseOutdated, parseView, type IOutdatedEntry, type TViewResult } from './npm.ts';
@@ -17,7 +17,6 @@ import type {
 } from './types.ts';
 
 const ALL_TYPES: readonly TDepType[] = ['prod', 'dev', 'optional'];
-const SEVERITY: readonly TFlag[] = ['deprecated', 'stale', 'outdated', 'unknown', 'ok'];
 
 interface IContext {
   cwd: string;
@@ -64,6 +63,7 @@ const lookup = async (entry: IDepEntry, ctx: IContext): Promise<TViewResult> => 
     'time',
     'dist-tags',
     'deprecated',
+    'engines',
     '--json',
     '--prefix',
     ctx.cwd,
@@ -78,7 +78,28 @@ const lookup = async (entry: IDepEntry, ctx: IContext): Promise<TViewResult> => 
 const outdatedKey = (entry: IDepEntry): string =>
   entry.queriedName === null ? entry.name : `${entry.name}:${entry.specifier.replace(/^npm:/, '')}`;
 
-const flagsFor = (row: Omit<IPackageResult, 'flags'>): TFlag[] => {
+// npm outdated resolves "latest" with the running Node's engines in mind. When the registry's
+// latest differs from what npm settled on (the installed version if it isn't listed), the newer
+// release needs a different Node. A deprecated latest is skipped by npm for another reason.
+const isBlocked = (
+  latest: string | null,
+  viewed: { deprecated: string | null; latestNode: string | null } | null,
+  hit: IOutdatedEntry | undefined,
+  current: string | null
+): boolean => {
+  const npmLatest = hit ? hit.latest : current;
+
+  return (
+    viewed !== null &&
+    viewed.latestNode !== null &&
+    viewed.deprecated === null &&
+    latest !== null &&
+    npmLatest !== null &&
+    npmLatest !== latest
+  );
+};
+
+const flagsFor = (row: Omit<IPackageResult, 'flags'>, blocked: boolean): TFlag[] => {
   const flags: TFlag[] = [];
   if (row.deprecated !== null) {
     flags.push('deprecated');
@@ -91,6 +112,9 @@ const flagsFor = (row: Omit<IPackageResult, 'flags'>): TFlag[] => {
   }
   if (row.unknown !== null) {
     flags.push('unknown');
+  }
+  if (blocked) {
+    flags.push('blocked');
   }
   return flags.length > 0 ? flags : ['ok'];
 };
@@ -117,19 +141,12 @@ const buildRow = (
     outdated,
     majorBump: outdated && isMajorBump(current, latest),
     deprecated: viewed?.deprecated ?? null,
+    latestNode: viewed?.latestNode ?? null,
     lastPublish: published ? published.toISOString() : null,
     stale: published !== null && published < addMonths(ctx.now, -ctx.staleAfterMonths),
     unknown: 'unknown' in view ? view.unknown : null,
   };
-  return { ...partial, flags: flagsFor(partial) };
-};
-
-const compareRows = (a: IPackageResult, b: IPackageResult): number => {
-  const rank = SEVERITY.indexOf(a.flags[0]!) - SEVERITY.indexOf(b.flags[0]!);
-  if (rank !== 0) {
-    return rank;
-  }
-  return a.name < b.name ? -1 : Number(a.name > b.name);
+  return { ...partial, flags: flagsFor(partial, isBlocked(latest, viewed, hit, current)) };
 };
 
 const summarise = (packages: IPackageResult[], skipped: number): ISummary => {
@@ -140,17 +157,18 @@ const summarise = (packages: IPackageResult[], skipped: number): ISummary => {
     stale: count('stale'),
     outdated: count('outdated'),
     unknown: count('unknown'),
+    blocked: count('blocked'),
     ok: count('ok'),
     skipped,
   };
 };
 
 export const check = async (options: ICheckOptions = {}): Promise<ICheckResult> => {
-  const cwd = path.resolve(options.cwd ?? process.cwd());
+  const cwd = resolve(options.cwd ?? process.cwd());
   const staleAfterMonths = options.staleAfterMonths ?? 6;
   const now = options.now ?? new Date();
   const runner = options.runner ?? createNpmRunner();
-  const { entries, skipped } = readDeps(cwd, {
+  const { project, entries, skipped } = readDeps(cwd, {
     include: options.include ?? ALL_TYPES,
     ignore: options.ignore ?? [],
   });
@@ -167,12 +185,12 @@ export const check = async (options: ICheckOptions = {}): Promise<ICheckResult> 
   const packages = await mapPool(entries, options.concurrency ?? 6, async (entry) =>
     buildRow(entry, await lookup(entry, ctx), outdated[outdatedKey(entry)], ctx)
   );
-  packages.sort(compareRows);
 
   return {
     schemaVersion: 1,
     generatedAt: now.toISOString(),
     staleAfterMonths,
+    project,
     packages,
     summary: summarise(packages, skipped.length),
     skipped: skipped.sort((a, b) => (a.name < b.name ? -1 : Number(a.name > b.name))),

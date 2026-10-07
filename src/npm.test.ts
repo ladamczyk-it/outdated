@@ -48,7 +48,19 @@ describe('parseView', () => {
       latest: '2.0.0',
       lastPublish: '2020-01-01T00:00:00.000Z',
       deprecated: null,
+      latestNode: null,
     });
+  });
+
+  it('reads engines.node of the latest release', () => {
+    const node = (engines: unknown) => parseView(view({ engines }));
+
+    expect(node({ node: '^22.18 || >= 24' })).toMatchObject({ latestNode: '^22.18 || >= 24' });
+    expect(node({ node: '' })).toMatchObject({ latestNode: null });
+    expect(node({ npm: '>=10' })).toMatchObject({ latestNode: null });
+    expect(node(['node'])).toMatchObject({ latestNode: null });
+    expect(node('>=14')).toMatchObject({ latestNode: null });
+    expect(parseView(view())).toMatchObject({ latestNode: null });
   });
 
   it('deprecated message handling', () => {

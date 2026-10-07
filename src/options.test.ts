@@ -15,6 +15,7 @@ const resultWith = (counts: Partial<Record<TProblem, number>>): ICheckResult => 
   schemaVersion: 1,
   generatedAt: '2026-01-01T00:00:00.000Z',
   staleAfterMonths: 6,
+  project: 'demo',
   packages: [],
   summary: {
     total: 0,
@@ -22,6 +23,7 @@ const resultWith = (counts: Partial<Record<TProblem, number>>): ICheckResult => 
     stale: 0,
     outdated: 0,
     unknown: 0,
+    blocked: 0,
     ok: 0,
     skipped: 0,
     ...counts,

@@ -5,7 +5,8 @@ export interface IOutdatedEntry {
 }
 
 export type TViewResult =
-  { latest: string; lastPublish: string; deprecated: string | null } | { unknown: string };
+  | { latest: string; lastPublish: string; deprecated: string | null; latestNode: string | null }
+  | { unknown: string };
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -47,6 +48,12 @@ export const parseOutdated = (stdout: string): Record<string, IOutdatedEntry> =>
   return Object.fromEntries(Object.entries(parsed).map(([name, v]) => [name, toEntry(v)]));
 };
 
+// engines may be an array or odd shapes in old packages; only `{ node: "<range>" }` counts.
+const nodeRange = (engines: unknown): string | null =>
+  isRecord(engines) && typeof engines.node === 'string' && engines.node !== ''
+    ? engines.node
+    : null;
+
 const UNEXPECTED: TViewResult = { unknown: 'unexpected npm view output' };
 
 const buildView = (parsed: Record<string, unknown>): TViewResult => {
@@ -64,6 +71,7 @@ const buildView = (parsed: Record<string, unknown>): TViewResult => {
     latest,
     lastPublish,
     deprecated: typeof dep === 'string' && dep !== '' ? dep : null,
+    latestNode: nodeRange(parsed.engines),
   };
 };
 

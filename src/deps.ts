@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import { readFileSync } from 'fs';
+import { basename, join } from 'path';
 
 import type { ISkipped, TDepType } from './types.ts';
 
@@ -22,7 +22,7 @@ const NAME_RE = /^(?:@[A-Za-z0-9~-][A-Za-z0-9._~-]*\/)?[A-Za-z0-9~-][A-Za-z0-9._
 
 const readJson = (file: string): Record<string, unknown> | null => {
   try {
-    const parsed: unknown = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
     return typeof parsed === 'object' && parsed !== null
       ? (parsed as Record<string, unknown>)
       : null;
@@ -59,8 +59,8 @@ const collect = (pkg: Record<string, unknown>, include: readonly TDepType[], see
 export function readDeps(
   cwd: string,
   { include, ignore }: { include: readonly TDepType[]; ignore: readonly string[] }
-): { entries: IDepEntry[]; skipped: ISkipped[] } {
-  const file = path.join(cwd, 'package.json');
+): { project: string; entries: IDepEntry[]; skipped: ISkipped[] } {
+  const file = join(cwd, 'package.json');
   const pkg = readJson(file);
   if (!pkg) {
     throw new Error(`Cannot read or parse package.json at ${file}`);
@@ -89,10 +89,11 @@ export function readDeps(
       validName: NAME_RE.test(queriedName ?? name),
     });
   }
-  return { entries, skipped };
+  const project = typeof pkg['name'] === 'string' && pkg['name'] ? pkg['name'] : basename(cwd);
+  return { project, entries, skipped };
 }
 
 export function readInstalledVersion(cwd: string, name: string): string | null {
-  const version = readJson(path.join(cwd, 'node_modules', name, 'package.json'))?.['version'];
+  const version = readJson(join(cwd, 'node_modules', name, 'package.json'))?.['version'];
   return typeof version === 'string' ? version : null;
 }

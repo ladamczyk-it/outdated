@@ -17,6 +17,7 @@ const pkg = (overrides: Partial<IPackageResult> = {}): IPackageResult => ({
   outdated: false,
   majorBump: false,
   deprecated: null,
+  latestNode: null,
   lastPublish: '2026-03-01T00:00:00.000Z',
   stale: false,
   unknown: null,
@@ -28,6 +29,7 @@ const makeResult = (packages: IPackageResult[], skipped: ISkipped[] = []): IChec
   schemaVersion: 1,
   generatedAt: now.toISOString(),
   staleAfterMonths: 6,
+  project: 'demo',
   packages,
   summary: {
     total: packages.length,
@@ -35,6 +37,7 @@ const makeResult = (packages: IPackageResult[], skipped: ISkipped[] = []): IChec
     stale: packages.filter((p) => p.flags.includes('stale')).length,
     outdated: packages.filter((p) => p.flags.includes('outdated')).length,
     unknown: packages.filter((p) => p.flags.includes('unknown')).length,
+    blocked: packages.filter((p) => p.flags.includes('blocked')).length,
     ok: packages.filter((p) => p.flags.includes('ok')).length,
     skipped: skipped.length,
   },
@@ -55,26 +58,53 @@ describe('format', () => {
 
   it('table header', () => {
     const header = table([pkg()]).split('\n')[0] ?? '';
-    const positions = ['Package', 'Type', 'Current', 'Latest', 'Last publish', 'Flags'].map((h) =>
-      header.indexOf(h)
-    );
+    const positions = [
+      'Package',
+      'Current',
+      'Wanted',
+      'Latest',
+      'Location',
+      'Depended by',
+      'Last publish',
+      'Flags',
+    ].map((h) => header.indexOf(h));
 
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toStrictEqual(positions);
   });
 
-  it('row order and type labels', () => {
+  it('rows are grouped by dependency type', () => {
     const out = table([
-      pkg({ name: 'zeta', type: 'prod' }),
+      pkg({ name: 'zeta', type: 'dev' }),
+      pkg({ name: 'mid', type: 'prod' }),
       pkg({ name: 'alpha', type: 'dev', flags: ['stale'], stale: true }),
-      pkg({ name: 'mid', type: 'optional' }),
+      pkg({ name: 'solo', type: 'optional' }),
+      pkg({ name: 'beta', type: 'prod' }),
     ]);
-    const rows = out.split('\n').filter((l) => /^(zeta|alpha|mid)\s/.test(l));
+    const title = /^(?:optional|dev)?[dD]ependencies \(\d+\)$/;
+    const lines = out
+      .split('\n')
+      .filter((l) => title.test(l) || /^(zeta|mid|alpha|solo|beta)\s/.test(l))
+      .map((l) => (title.test(l) ? l : (l.split(/\s+/)[0] ?? '')));
 
-    expect(rows.map((l) => l.split(/\s+/)[0])).toStrictEqual(['zeta', 'alpha', 'mid']);
-    expect(rows[0]).toMatch(/^zeta\s+dep\s/);
-    expect(rows[1]).toMatch(/^alpha\s+dev\s/);
-    expect(rows[2]).toMatch(/^mid\s+opt\s/);
+    expect(lines).toStrictEqual([
+      'dependencies (2)',
+      'mid',
+      'beta',
+      'devDependencies (2)',
+      'zeta',
+      'alpha',
+      'optionalDependencies (1)',
+      'solo',
+    ]);
+  });
+
+  it('empty sections are omitted', () => {
+    const out = table([pkg({ type: 'dev' })]);
+
+    expect(out).toContain('devDependencies (1)');
+    expect(out).not.toMatch(/^dependencies/m);
+    expect(out).not.toContain('optionalDependencies');
   });
 
   it('last publish with age', () => {
@@ -85,11 +115,53 @@ describe('format', () => {
 
   it('null cells', () => {
     const row =
-      table([pkg({ current: null, latest: null, lastPublish: null })])
+      table([pkg({ current: null, wanted: null, latest: null, lastPublish: null })])
+        .split('\n')
+        .find((l) => l.startsWith('left-pad')) ?? '';
+    const cells = row.split(/\s{2,}/);
+
+    expect(cells.slice(1, 4)).toStrictEqual(['-', '-', '-']);
+    expect(cells[6]).toBe('-');
+  });
+
+  it('mirrors the npm outdated columns, ours last', () => {
+    const row =
+      table([pkg({ name: 'typescript', current: '6.0.3', wanted: '6.0.3', latest: '7.0.2' })])
+        .split('\n')
+        .find((l) => l.startsWith('typescript')) ?? '';
+
+    expect(row.split(/\s{2,}/)).toStrictEqual([
+      'typescript',
+      '6.0.3',
+      '6.0.3',
+      '7.0.2',
+      'node_modules/typescript',
+      'demo',
+      '2026-03-01 (4d ago)',
+      'ok',
+    ]);
+  });
+
+  it('wanted falls back to current when not outdated', () => {
+    const row =
+      table([pkg({ current: '1.2.3', wanted: null })])
         .split('\n')
         .find((l) => l.startsWith('left-pad')) ?? '';
 
-    expect(row.split(/\s{2,}/).slice(2, 5)).toStrictEqual(['-', '-', '-']);
+    expect(row.split(/\s{2,}/)[2]).toBe('1.2.3');
+  });
+
+  it('version columns are right-aligned', () => {
+    const lines = table([
+      pkg({ name: 'a', current: '1.0.0' }),
+      pkg({ name: 'b', current: '10.20.30' }),
+    ]).split('\n');
+    const end = (name: string, version: string): number => {
+      const line = lines.find((l) => l.startsWith(name)) ?? '';
+      return line.indexOf(version) + version.length;
+    };
+
+    expect(end('a', '1.0.0')).toBe(end('b', '10.20.30'));
   });
 
   it('deprecation truncation', () => {
@@ -106,6 +178,18 @@ describe('format', () => {
     expect(deprecated('use other')).toContain('use other');
   });
 
+  it('blocked states which node the latest release needs', () => {
+    const blocked = pkg({ latest: '10.0.1', latestNode: '^22.18 || >= 24', flags: ['blocked'] });
+    const out = table([blocked]);
+
+    expect(out).toContain('latest needs node ^22.18 || >= 24');
+    const row = out.split('\n').find((l) => l.startsWith('left-pad')) ?? '';
+
+    expect(row.endsWith('latest needs node ^22.18 || >= 24')).toBe(true);
+    expect(row).not.toMatch(/\bok\b/);
+    expect(out).toContain('1 blocked');
+  });
+
   it('unknown reason shown', () => {
     expect(table([pkg({ unknown: 'E404 not found', flags: ['unknown'] })])).toContain(
       'E404 not found'
@@ -119,7 +203,9 @@ describe('format', () => {
 
     expect(hidden).toContain('bad');
     expect(hidden).not.toContain('fine');
-    expect(hidden).toContain('2 packages · 0 deprecated · 1 stale · 0 outdated · 0 unknown · 1 ok');
+    expect(hidden).toContain(
+      '2 packages · 0 deprecated · 1 stale · 0 outdated · 0 unknown · 0 blocked · 1 ok'
+    );
     expect(shown).toContain('fine');
   });
 
@@ -138,5 +224,68 @@ describe('format', () => {
     expect(out).toContain('No dependencies found');
     expect(out).not.toContain('Package');
     expect(out).toContain('0 packages');
+  });
+});
+
+describe('format colours and links', () => {
+  it('colours flags only when asked', () => {
+    const packages = [
+      pkg({ name: 'd', deprecated: 'gone', flags: ['deprecated'] }),
+      pkg({ name: 'm', majorBump: true, flags: ['outdated'] }),
+    ];
+    const render = (color: boolean) =>
+      formatTable(makeResult(packages), { onlyProblems: false, now, color });
+    const plain = render(false);
+    const coloured = render(true);
+    // eslint-disable-next-line no-control-regex
+    const stripped = coloured.replace(/\u001b\[\d+m|\u001b\]8;;[^\u001b]*\u001b\\/g, '');
+
+    expect(plain).not.toContain('\u001b');
+    expect(coloured).toContain('\u001b[31mdeprecated gone\u001b[39m');
+    expect(coloured).toContain('\u001b[36moutdated\u001b[39m');
+    expect(coloured).toContain('\u001b[31m1.0.0');
+    expect(stripped).toBe(plain);
+  });
+
+  it('uses the npm outdated palette', () => {
+    const lagging = pkg({
+      name: 'lag',
+      current: '1.0.0',
+      wanted: '1.0.0',
+      latest: '2.0.0',
+      outdated: true,
+      flags: ['outdated'],
+    });
+    const behind = pkg({
+      name: 'behind',
+      current: '1.0.0',
+      wanted: '1.1.0',
+      latest: '1.1.0',
+      outdated: true,
+      flags: ['outdated'],
+    });
+    const out = formatTable(makeResult([lagging, behind]), {
+      onlyProblems: false,
+      now,
+      color: true,
+    });
+
+    expect(out).toContain('\u001b[33mlag\u001b[39m');
+    expect(out).toContain('\u001b[31mbehind\u001b[39m');
+    expect(out).toContain('\u001b[32m1.1.0\u001b[39m');
+    expect(out).toContain('\u001b[35m2.0.0\u001b[39m');
+    expect(out).toContain('\u001b[2mnode_modules/lag');
+  });
+
+  it('links package names to npm only when colour is on', () => {
+    const packages = [pkg({ name: 'left-pad' }), pkg({ name: 'pc', queriedName: 'picocolors' })];
+    const render = (color: boolean) =>
+      formatTable(makeResult(packages), { onlyProblems: false, now, color });
+    const link = (name: string, text: string) =>
+      `\u001b]8;;https://www.npmjs.com/package/${name}\u001b\\${text}\u001b]8;;\u001b\\`;
+
+    expect(render(true)).toContain(link('left-pad', 'left-pad'));
+    expect(render(true)).toContain(link('picocolors', 'pc'));
+    expect(render(false)).not.toContain('npmjs.com');
   });
 });

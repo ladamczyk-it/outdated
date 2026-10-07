@@ -1,6 +1,6 @@
 export type TDepType = 'prod' | 'dev' | 'optional'; // == --include vocabulary
 export type TProblem = 'deprecated' | 'stale' | 'outdated' | 'unknown';
-export type TFlag = TProblem | 'ok'; // 'ok' iff no problem; then flags === ['ok']
+export type TFlag = TProblem | 'blocked' | 'ok'; // 'ok' iff no other flag; then flags === ['ok']. 'blocked' is informational: not a --fail-on problem
 
 // Always runs `npm <args>`. Resolves STDOUT only. Rejects on spawn failure only.
 export type TRunner = (args: readonly string[]) => Promise<string>;
@@ -27,10 +27,11 @@ export interface IPackageResult {
   outdated: boolean; // true iff the package is present in `npm outdated`
   majorBump: boolean; // outdated && latest major > current major (leading-integer regex, no semver dep)
   deprecated: string | null; // full message, never truncated in data
+  latestNode: string | null; // `engines.node` of the latest release when it declares one, else null
   lastPublish: string | null; // ISO 8601 of time[dist-tags.latest], else null
   stale: boolean; // false whenever lastPublish is null
   unknown: string | null; // reason the `npm view` lookup failed / time[latest] missing or unparseable
-  flags: TFlag[]; // fixed order: deprecated, stale, outdated, unknown; or ['ok']
+  flags: TFlag[]; // fixed order: deprecated, stale, outdated, unknown, blocked; or ['ok']
 }
 
 export interface ISkipped {
@@ -46,6 +47,7 @@ export interface ISummary {
   stale: number;
   outdated: number;
   unknown: number;
+  blocked: number; // latest release needs a newer Node than npm outdated resolved for
   ok: number; // rows carrying the flag
   skipped: number;
 }
@@ -54,7 +56,8 @@ export interface ICheckResult {
   schemaVersion: 1;
   generatedAt: string; // ISO of options.now
   staleAfterMonths: number;
-  packages: IPackageResult[]; // sorted: severity (first present of deprecated, stale, outdated, unknown, ok), then name by code-point `<`
+  project: string; // package.json `name`, else the directory name (npm outdated's "Depended by")
+  packages: IPackageResult[]; // package.json order (dependencies, optionalDependencies, devDependencies; first occurrence wins)
   summary: ISummary;
   skipped: ISkipped[]; // sorted by name
 }

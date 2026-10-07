@@ -58,11 +58,13 @@ const viewJson = (opts: {
   published?: string;
   modified?: string;
   deprecated?: string;
+  node?: string;
 }): string =>
   JSON.stringify({
     'dist-tags': { latest: opts.latest ?? '1.0.0' },
     time: { modified: opts.modified ?? RECENT, [opts.latest ?? '1.0.0']: opts.published ?? RECENT },
     ...(opts.deprecated === undefined ? {} : { deprecated: opts.deprecated }),
+    ...(opts.node === undefined ? {} : { engines: { node: opts.node } }),
   });
 
 const outdatedJson = (entries: Record<string, Record<string, string>>): string =>
@@ -100,12 +102,12 @@ const names = (result: ICheckResult): string[] => result.packages.map((p) => p.n
 const flagsOf = (result: ICheckResult, name: string): string[] => row(result, name).flags;
 
 describe('check classification', () => {
-  it('classifies and sorts by severity', async () => {
+  it('classifies and keeps package.json order', async () => {
     const dir = project({
-      'aa-ok': '1.0.0',
-      'b-out': '1.0.0',
       'c-stale': '1.0.0',
+      'aa-ok': '1.0.0',
       'd-dep': '1.0.0',
+      'b-out': '1.0.0',
     });
     const result = await run(dir, {
       outdated: outdatedJson({ 'b-out': { current: '1.0.0', wanted: '1.0.0', latest: '1.1.0' } }),
@@ -116,12 +118,12 @@ describe('check classification', () => {
       },
     });
 
-    expect(names(result)).toStrictEqual(['d-dep', 'c-stale', 'b-out', 'aa-ok']);
+    expect(names(result)).toStrictEqual(['c-stale', 'aa-ok', 'd-dep', 'b-out']);
     expect(result.packages.map((p) => p.flags)).toStrictEqual([
-      ['deprecated'],
       ['stale'],
-      ['outdated'],
       ['ok'],
+      ['deprecated'],
+      ['outdated'],
     ]);
     expect(row(result, 'd-dep').deprecated).toBe('use something else');
     expect(row(result, 'c-stale').lastPublish).toBe(OLD);
@@ -236,8 +238,8 @@ describe('check runner interaction', () => {
     ]);
     const views = calls.filter((c) => c[0] === 'view').sort((a, b) => (a[1]! < b[1]! ? -1 : 1));
     expect(views).toStrictEqual([
-      ['view', 'one', 'time', 'dist-tags', 'deprecated', '--json', '--prefix', dir],
-      ['view', 'two', 'time', 'dist-tags', 'deprecated', '--json', '--prefix', dir],
+      ['view', 'one', 'time', 'dist-tags', 'deprecated', 'engines', '--json', '--prefix', dir],
+      ['view', 'two', 'time', 'dist-tags', 'deprecated', 'engines', '--json', '--prefix', dir],
     ]);
   });
 
@@ -296,6 +298,38 @@ describe('check results', () => {
     expect(row(result, 'bare').latest).toBeNull();
   });
 
+  it('flags blocked when the latest release needs another node', async () => {
+    const NODE = '^22.18 || >= 24';
+    const dir = project(
+      { listed: '1', quiet: '1', same: '1', dep: '1', bare: '1' },
+      { quiet: '9.0.2', same: '10.0.1', dep: '9.0.2', bare: '9.0.2' }
+    );
+    const result = await run(dir, {
+      // npm settled on 9.0.2 for `listed` (outdated) and, by not listing the others, on current
+      outdated: outdatedJson({
+        listed: { current: '9.0.0', wanted: '9.0.2', latest: '9.0.2' },
+      }),
+      views: {
+        listed: viewJson({ latest: '10.0.1', node: NODE }),
+        quiet: viewJson({ latest: '10.0.1', node: NODE }),
+        same: viewJson({ latest: '10.0.1', node: NODE }),
+        dep: viewJson({ latest: '10.0.1', node: NODE, deprecated: 'gone' }),
+        bare: viewJson({ latest: '10.0.1' }),
+      },
+    });
+
+    expect(flagsOf(result, 'listed')).toStrictEqual(['outdated', 'blocked']);
+    expect(flagsOf(result, 'quiet')).toStrictEqual(['blocked']);
+    expect(row(result, 'quiet').latestNode).toBe(NODE);
+    expect(row(result, 'quiet').latest).toBe('10.0.1');
+    expect(flagsOf(result, 'same')).toStrictEqual(['ok']);
+    expect(row(result, 'same').latestNode).toBe(NODE);
+    expect(flagsOf(result, 'dep')).toStrictEqual(['deprecated']);
+    expect(flagsOf(result, 'bare')).toStrictEqual(['ok']);
+    expect(row(result, 'bare').latestNode).toBeNull();
+    expect(result.summary.blocked).toBe(2);
+  });
+
   it('summary and envelope', async () => {
     const dir = project({
       ok: '1',
@@ -327,6 +361,7 @@ describe('check results', () => {
     expect(summary).toStrictEqual({
       total: 4,
       deprecated: count('deprecated'),
+      blocked: count('blocked'),
       stale: count('stale'),
       outdated: count('outdated'),
       unknown: count('unknown'),

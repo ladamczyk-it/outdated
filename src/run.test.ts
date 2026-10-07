@@ -58,7 +58,7 @@ const exec = (argv: string[], dir: string, runner: TRunner = fakeRunner()) =>
   run(['--cwd', dir, ...argv], { runner, now: NOW });
 
 const mixed = (): { dir: string; runner: TRunner } => ({
-  dir: project({ dependencies: { aa: '1.0.0', bb: '1.0.0', cc: '1.0.0', dd: '1.0.0' } }),
+  dir: project({ dependencies: { dd: '1.0.0', aa: '1.0.0', cc: '1.0.0', bb: '1.0.0' } }),
   runner: fakeRunner({
     outdated: JSON.stringify({ cc: { current: '0.9.0', wanted: '1.0.0', latest: '1.0.0' } }),
     views: { bb: view(OLD), cc: view(), dd: view(RECENT, 'gone') },
@@ -86,14 +86,14 @@ describe('run output', () => {
     expect(result.stderr).toBe('');
   });
 
-  it('table mode order', async () => {
+  it('table mode keeps package.json order', async () => {
     const { dir, runner } = mixed();
     const { stdout } = await exec([], dir, runner);
     const at = (name: string): number => stdout.search(new RegExp(`^${name} `, 'm'));
 
     expect(at('dd')).toBeGreaterThan(0);
-    expect([at('dd'), at('bb'), at('cc'), at('aa')]).toStrictEqual(
-      [at('dd'), at('bb'), at('cc'), at('aa')].toSorted((a, b) => a - b)
+    expect([at('dd'), at('aa'), at('cc'), at('bb')]).toStrictEqual(
+      [at('dd'), at('aa'), at('cc'), at('bb')].toSorted((a, b) => a - b)
     );
     expect(stdout).not.toContain('"schemaVersion"');
   });
