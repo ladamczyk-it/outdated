@@ -1,12 +1,180 @@
-import type { ICheckOptions, ICheckResult } from './types.ts';
+import path from 'node:path';
 
-// Temporary stub; Ticket 1.7 replaces it.
-export const check = (options: ICheckOptions = {}): Promise<ICheckResult> =>
-  Promise.resolve({
-    schemaVersion: 1,
-    generatedAt: new Date().toISOString(),
-    staleAfterMonths: options.staleAfterMonths ?? 6,
-    packages: [],
-    summary: { total: 0, deprecated: 0, stale: 0, outdated: 0, unknown: 0, ok: 0, skipped: 0 },
-    skipped: [],
+import { readDeps, readInstalledVersion, type IDepEntry } from './deps.ts';
+import { parseOutdated, parseView, type IOutdatedEntry, type TViewResult } from './npm.ts';
+import { mapPool } from './pool.ts';
+import { createNpmRunner } from './runner.ts';
+import { addMonths } from './time.ts';
+
+import type {
+  ICheckOptions,
+  ICheckResult,
+  IPackageResult,
+  ISummary,
+  TDepType,
+  TFlag,
+  TRunner,
+} from './types.ts';
+
+const ALL_TYPES: readonly TDepType[] = ['prod', 'dev', 'optional'];
+const SEVERITY: readonly TFlag[] = ['deprecated', 'stale', 'outdated', 'unknown', 'ok'];
+
+interface IContext {
+  cwd: string;
+  runner: TRunner;
+  timeoutMs: number;
+  now: Date;
+  staleAfterMonths: number;
+  outdated: Record<string, IOutdatedEntry>;
+}
+
+const major = (version: string | null): number | null => {
+  const match = /^v?(\d+)/.exec(version ?? '');
+  return match ? Number(match[1]) : null;
+};
+
+const isMajorBump = (current: string | null, latest: string | null): boolean => {
+  const from = major(current);
+  const to = major(latest);
+  return from !== null && to !== null && to > from;
+};
+
+const withTimeout = async (work: Promise<string>, ms: number): Promise<string> => {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error(`npm view timed out after ${ms}ms`));
+    }, ms);
   });
+  try {
+    // ponytail: a timed-out child cannot be killed; it runs on, only its result is dropped.
+    return await Promise.race([work, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const lookup = async (entry: IDepEntry, ctx: IContext): Promise<TViewResult> => {
+  if (!entry.validName) {
+    return { unknown: 'invalid package name' };
+  }
+  const args = [
+    'view',
+    entry.queriedName ?? entry.name,
+    'time',
+    'dist-tags',
+    'deprecated',
+    '--json',
+    '--prefix',
+    ctx.cwd,
+  ];
+  try {
+    return parseView(await withTimeout(ctx.runner(args), ctx.timeoutMs));
+  } catch (error) {
+    return { unknown: error instanceof Error ? error.message : String(error) };
+  }
+};
+
+const outdatedKey = (entry: IDepEntry): string =>
+  entry.queriedName === null ? entry.name : `${entry.name}:${entry.specifier.replace(/^npm:/, '')}`;
+
+const flagsFor = (row: Omit<IPackageResult, 'flags'>): TFlag[] => {
+  const flags: TFlag[] = [];
+  if (row.deprecated !== null) {
+    flags.push('deprecated');
+  }
+  if (row.stale) {
+    flags.push('stale');
+  }
+  if (row.outdated) {
+    flags.push('outdated');
+  }
+  if (row.unknown !== null) {
+    flags.push('unknown');
+  }
+  return flags.length > 0 ? flags : ['ok'];
+};
+
+const buildRow = (
+  entry: IDepEntry,
+  view: TViewResult,
+  hit: IOutdatedEntry | undefined,
+  ctx: IContext
+): IPackageResult => {
+  const viewed = 'latest' in view ? view : null;
+  const current = hit?.current ?? readInstalledVersion(ctx.cwd, entry.name);
+  const latest = viewed?.latest ?? hit?.latest ?? null;
+  const published = viewed ? new Date(viewed.lastPublish) : null;
+  const outdated = hit !== undefined;
+  const partial = {
+    name: entry.name,
+    queriedName: entry.queriedName,
+    type: entry.type,
+    specifier: entry.specifier,
+    current,
+    wanted: hit?.wanted ?? null,
+    latest,
+    outdated,
+    majorBump: outdated && isMajorBump(current, latest),
+    deprecated: viewed?.deprecated ?? null,
+    lastPublish: published ? published.toISOString() : null,
+    stale: published !== null && published < addMonths(ctx.now, -ctx.staleAfterMonths),
+    unknown: 'unknown' in view ? view.unknown : null,
+  };
+  return { ...partial, flags: flagsFor(partial) };
+};
+
+const compareRows = (a: IPackageResult, b: IPackageResult): number => {
+  const rank = SEVERITY.indexOf(a.flags[0]!) - SEVERITY.indexOf(b.flags[0]!);
+  if (rank !== 0) {
+    return rank;
+  }
+  return a.name < b.name ? -1 : Number(a.name > b.name);
+};
+
+const summarise = (packages: IPackageResult[], skipped: number): ISummary => {
+  const count = (flag: TFlag): number => packages.filter((p) => p.flags.includes(flag)).length;
+  return {
+    total: packages.length,
+    deprecated: count('deprecated'),
+    stale: count('stale'),
+    outdated: count('outdated'),
+    unknown: count('unknown'),
+    ok: count('ok'),
+    skipped,
+  };
+};
+
+export const check = async (options: ICheckOptions = {}): Promise<ICheckResult> => {
+  const cwd = path.resolve(options.cwd ?? process.cwd());
+  const staleAfterMonths = options.staleAfterMonths ?? 6;
+  const now = options.now ?? new Date();
+  const runner = options.runner ?? createNpmRunner();
+  const { entries, skipped } = readDeps(cwd, {
+    include: options.include ?? ALL_TYPES,
+    ignore: options.ignore ?? [],
+  });
+  const outdated = parseOutdated(await runner(['outdated', '--json', '--prefix', cwd]));
+  const ctx: IContext = {
+    cwd,
+    runner,
+    timeoutMs: options.timeoutMs ?? 30_000,
+    now,
+    staleAfterMonths,
+    outdated,
+  };
+
+  const packages = await mapPool(entries, options.concurrency ?? 6, async (entry) =>
+    buildRow(entry, await lookup(entry, ctx), outdated[outdatedKey(entry)], ctx)
+  );
+  packages.sort(compareRows);
+
+  return {
+    schemaVersion: 1,
+    generatedAt: now.toISOString(),
+    staleAfterMonths,
+    packages,
+    summary: summarise(packages, skipped.length),
+    skipped: skipped.sort((a, b) => (a.name < b.name ? -1 : Number(a.name > b.name))),
+  };
+};
