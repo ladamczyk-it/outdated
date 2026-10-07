@@ -1,6 +1,6 @@
 {
   "name": "@ladamczyk/outdated",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "CLI that reports outdated dependencies",
   "keywords": [
     "cli",
