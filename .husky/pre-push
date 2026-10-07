@@ -1,0 +1,5 @@
+echo \[🐶 Husky] Running pre-push hook...\
+
+npm run husky:pre-push
+
+echo \[🐶 Husky] Done ✅ pre-push hook...\
