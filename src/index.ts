@@ -1,4 +1,5 @@
 export { check } from './check.ts';
+export { formatJson, formatTable } from './format.ts';
 
 export type {
   ICheckOptions,
