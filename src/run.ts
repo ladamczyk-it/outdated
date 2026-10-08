@@ -6,6 +6,7 @@ import pkg from '../package.json' with { type: 'json' };
 import { check } from './check.ts';
 import { formatJson, formatTable } from './format.ts';
 import { exitCodeFor, parseCliOptions } from './options.ts';
+import { resolveConsent, sendStats } from './stats.ts';
 
 import type { TRunner } from './types.ts';
 
@@ -52,6 +53,12 @@ const execute = async (
   }
 
   const options = parseCliOptions(raw);
+
+  // --json is the scripting mode: never prompt in it, and never count it unasked.
+  if (!options.json && (await resolveConsent())) {
+    void sendStats();
+  }
+
   const result = await check({
     cwd: options.cwd,
     staleAfterMonths: options.staleAfterMonths,

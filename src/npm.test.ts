@@ -49,7 +49,21 @@ describe('parseView', () => {
       lastPublish: '2020-01-01T00:00:00.000Z',
       deprecated: null,
       latestNode: null,
+      repository: null,
     });
+  });
+
+  it('normalises repository to an https url', () => {
+    const repo = (repository: unknown) => parseView(view({ repository }));
+    const gh = 'https://github.com/x/y';
+
+    expect(repo({ url: 'git+https://github.com/x/y.git' })).toMatchObject({ repository: gh });
+    expect(repo({ url: 'git://github.com/x/y.git' })).toMatchObject({ repository: gh });
+    expect(repo({ url: 'git@github.com:x/y.git' })).toMatchObject({ repository: gh });
+    expect(repo('x/y')).toMatchObject({ repository: gh });
+    expect(repo('github:x/y')).toMatchObject({ repository: gh });
+    expect(repo({ url: 'file:../y' })).toMatchObject({ repository: null });
+    expect(repo(42)).toMatchObject({ repository: null });
   });
 
   it('reads engines.node of the latest release', () => {

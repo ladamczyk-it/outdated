@@ -238,8 +238,30 @@ describe('check runner interaction', () => {
     ]);
     const views = calls.filter((c) => c[0] === 'view').sort((a, b) => (a[1]! < b[1]! ? -1 : 1));
     expect(views).toStrictEqual([
-      ['view', 'one', 'time', 'dist-tags', 'deprecated', 'engines', '--json', '--prefix', dir],
-      ['view', 'two', 'time', 'dist-tags', 'deprecated', 'engines', '--json', '--prefix', dir],
+      [
+        'view',
+        'one',
+        'time',
+        'dist-tags',
+        'deprecated',
+        'engines',
+        'repository',
+        '--json',
+        '--prefix',
+        dir,
+      ],
+      [
+        'view',
+        'two',
+        'time',
+        'dist-tags',
+        'deprecated',
+        'engines',
+        'repository',
+        '--json',
+        '--prefix',
+        dir,
+      ],
     ]);
   });
 

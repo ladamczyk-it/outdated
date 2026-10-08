@@ -51,7 +51,7 @@
   },
   "dependencies": {
     "@ladamczyk/qoq-utils": "6.1.10",
-    "cac": "7.0.0",
+    "cac": "7.0.1",
     "picocolors": "1.1.1"
   },
   "devDependencies": {

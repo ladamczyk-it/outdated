@@ -6,7 +6,7 @@ import type { ICheckResult, IPackageResult, TDepType, TFlag } from './types.ts';
 
 type TColors = ReturnType<typeof pc.createColors>;
 
-// npm outdated's own columns first, ours (Last publish, Flags) at the end.
+// npm outdated's own columns first, ours (Last publish, Links, Flags) at the end.
 const HEADER = [
   'Package',
   'Current',
@@ -15,6 +15,7 @@ const HEADER = [
   'Location',
   'Depended by',
   'Last publish',
+  'Links',
   'Flags',
 ];
 const RIGHT_ALIGNED = new Set([1, 2, 3]);
@@ -51,6 +52,8 @@ const publishText = (pkg: IPackageResult, now: Date): string =>
     ? '-'
     : `${pkg.lastPublish.slice(0, 10)} (${relativeAge(pkg.lastPublish, now)})`;
 
+const linksText = (pkg: IPackageResult): string => (pkg.repository === null ? 'npm' : 'npm / repo');
+
 const toCells = (pkg: IPackageResult, project: string, now: Date): string[] => [
   pkg.name,
   pkg.current ?? '-',
@@ -59,6 +62,7 @@ const toCells = (pkg: IPackageResult, project: string, now: Date): string[] => [
   `node_modules/${pkg.name}`,
   project,
   publishText(pkg, now),
+  linksText(pkg),
 ];
 
 const flagColors = (c: TColors): Record<TFlag, (text: string) => string> => ({
@@ -102,15 +106,25 @@ const latestColor = (pkg: IPackageResult, c: TColors): TPaint => {
   return pkg.outdated ? c.magenta : plain;
 };
 
+// The npm label always comes first; a second label, when present, is the repository.
+const linkPaint =
+  (pkg: IPackageResult): TPaint =>
+  (text) =>
+    text
+      .split(' / ')
+      .map((label, i) => hyperlink(i === 0 ? npmUrl(pkg) : (pkg.repository ?? ''), label))
+      .join(' / ');
+
 // Same palette as npm outdated: wanted green, latest magenta, location and dependent dim.
 const paints = (pkg: IPackageResult, c: TColors, links: boolean): TPaint[] => [
-  links ? (text) => hyperlink(npmUrl(pkg), nameColor(pkg, c)(text)) : nameColor(pkg, c),
+  nameColor(pkg, c),
   plain,
   pkg.outdated ? c.green : plain,
   latestColor(pkg, c),
   c.dim,
   c.dim,
   plain,
+  links ? linkPaint(pkg) : plain,
 ];
 
 // Padding sits outside the colour codes, so ANSI never skews alignment.

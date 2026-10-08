@@ -5,7 +5,13 @@ export interface IOutdatedEntry {
 }
 
 export type TViewResult =
-  | { latest: string; lastPublish: string; deprecated: string | null; latestNode: string | null }
+  | {
+      latest: string;
+      lastPublish: string;
+      deprecated: string | null;
+      latestNode: string | null;
+      repository: string | null;
+    }
   | { unknown: string };
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -54,6 +60,21 @@ const nodeRange = (engines: unknown): string | null =>
     ? engines.node
     : null;
 
+// repository is a string or { url }; git+https, git://, scp-style and user/repo shorthand all become https.
+const repoUrl = (repository: unknown): string | null => {
+  const raw = isRecord(repository) ? repository.url : repository;
+  if (typeof raw !== 'string' || raw === '') {
+    return null;
+  }
+  const url = raw
+    .replace(/^git\+/, '')
+    .replace(/^(?:git|ssh):\/\/(?:git@)?/, 'https://')
+    .replace(/^git@([^:]+):/, 'https://$1/')
+    .replace(/^(?:github:)?([\w.-]+\/[\w.-]+)$/, 'https://github.com/$1')
+    .replace(/\.git$/, '');
+  return /^https?:\/\//.test(url) ? url : null;
+};
+
 const UNEXPECTED: TViewResult = { unknown: 'unexpected npm view output' };
 
 const buildView = (parsed: Record<string, unknown>): TViewResult => {
@@ -72,6 +93,7 @@ const buildView = (parsed: Record<string, unknown>): TViewResult => {
     lastPublish,
     deprecated: typeof dep === 'string' && dep !== '' ? dep : null,
     latestNode: nodeRange(parsed.engines),
+    repository: repoUrl(parsed.repository),
   };
 };
 

@@ -18,6 +18,7 @@ const pkg = (overrides: Partial<IPackageResult> = {}): IPackageResult => ({
   majorBump: false,
   deprecated: null,
   latestNode: null,
+  repository: null,
   lastPublish: '2026-03-01T00:00:00.000Z',
   stale: false,
   unknown: null,
@@ -66,6 +67,7 @@ describe('format', () => {
       'Location',
       'Depended by',
       'Last publish',
+      'Links',
       'Flags',
     ].map((h) => header.indexOf(h));
 
@@ -138,6 +140,7 @@ describe('format', () => {
       'node_modules/typescript',
       'demo',
       '2026-03-01 (4d ago)',
+      'npm',
       'ok',
     ]);
   });
@@ -277,15 +280,25 @@ describe('format colours and links', () => {
     expect(out).toContain('\u001b[2mnode_modules/lag');
   });
 
-  it('links package names to npm only when colour is on', () => {
-    const packages = [pkg({ name: 'left-pad' }), pkg({ name: 'pc', queriedName: 'picocolors' })];
+  it('links npm and repository labels only when colour is on', () => {
+    const packages = [
+      pkg({ name: 'left-pad', repository: 'https://github.com/x/left-pad' }),
+      pkg({ name: 'pc', queriedName: 'picocolors', repository: 'https://example.org/pc' }),
+      pkg({ name: 'bare' }),
+    ];
     const render = (color: boolean) =>
       formatTable(makeResult(packages), { onlyProblems: false, now, color });
-    const link = (name: string, text: string) =>
-      `\u001b]8;;https://www.npmjs.com/package/${name}\u001b\\${text}\u001b]8;;\u001b\\`;
+    const link = (url: string, text: string) => `\u001b]8;;${url}\u001b\\${text}\u001b]8;;\u001b\\`;
+    const npm = (name: string) => `https://www.npmjs.com/package/${name}`;
 
-    expect(render(true)).toContain(link('left-pad', 'left-pad'));
-    expect(render(true)).toContain(link('picocolors', 'pc'));
+    expect(render(true)).toContain(
+      `${link(npm('left-pad'), 'npm')} / ${link('https://github.com/x/left-pad', 'repo')}`
+    );
+    expect(render(true)).toContain(
+      `${link(npm('picocolors'), 'npm')} / ${link('https://example.org/pc', 'repo')}`
+    );
+    expect(render(true)).toContain(link(npm('bare'), 'npm'));
     expect(render(false)).not.toContain('npmjs.com');
+    expect(render(false)).toContain('npm / repo');
   });
 });

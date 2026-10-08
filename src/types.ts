@@ -28,6 +28,7 @@ export interface IPackageResult {
   majorBump: boolean; // outdated && latest major > current major (leading-integer regex, no semver dep)
   deprecated: string | null; // full message, never truncated in data
   latestNode: string | null; // `engines.node` of the latest release when it declares one, else null
+  repository: string | null; // https URL of the package's repository from `npm view`, else null
   lastPublish: string | null; // ISO 8601 of time[dist-tags.latest], else null
   stale: boolean; // false whenever lastPublish is null
   unknown: string | null; // reason the `npm view` lookup failed / time[latest] missing or unparseable
