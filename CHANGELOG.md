@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/ladamczyk-it/outdated/compare/v1.0.0...v1.1.0) (2026-10-08)
+
+
+### Features
+
+* add repo url and stats ([3c2d2d2](https://github.com/ladamczyk-it/outdated/commit/3c2d2d2fd26d9055990e6e1c68cb261c73497759))
+
 # 1.0.0 (2026-10-07)
 
 
