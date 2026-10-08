@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/ladamczyk-it/outdated/compare/v1.1.0...v1.1.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* export helper functions ([4cd2506](https://github.com/ladamczyk-it/outdated/commit/4cd25062b75b994289d7c2a873d48871708f0105))
+
 # [1.1.0](https://github.com/ladamczyk-it/outdated/compare/v1.0.0...v1.1.0) (2026-10-08)
 
 
