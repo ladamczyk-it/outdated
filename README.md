@@ -1,10 +1,19 @@
 # @ladamczyk/outdated
 
-CLI that reports outdated dependencies using the npm CLI.
+An extension of `npm outdated`: the same table, plus last publish date, deprecation, staleness and repository links. It uses the npm CLI under the hood.
 
 ## Usage
 
+Run it directly, no install needed:
+
 ```bash
+npx -y @ladamczyk/outdated [options]
+```
+
+Or install globally and use the `outdated` command:
+
+```bash
+npm i -g @ladamczyk/outdated
 outdated [options]
 ```
 

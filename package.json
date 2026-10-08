@@ -1,7 +1,7 @@
 {
   "name": "@ladamczyk/outdated",
   "version": "1.1.1",
-  "description": "CLI that reports outdated dependencies",
+  "description": "Extension of npm outdated: adds last publish, deprecation and staleness",
   "keywords": [
     "cli",
     "outdated",
