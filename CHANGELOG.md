@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/ladamczyk-it/outdated/compare/v1.1.1...v1.1.2) (2026-10-11)
+
+
+### Bug Fixes
+
+* packages bump ([e4ab926](https://github.com/ladamczyk-it/outdated/commit/e4ab9261e61062eec9f2fc588588be9d86979f0c))
+
 ## [1.1.1](https://github.com/ladamczyk-it/outdated/compare/v1.1.0...v1.1.1) (2026-10-08)
 
 
