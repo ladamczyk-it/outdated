@@ -17,6 +17,8 @@ export default {
     [
       '@semantic-release/git',
       {
+        // No [skip ci] (the plugin default): the tag must reach Woodpecker to trigger cv's docs sync.
+        message: 'chore(release): ${nextRelease.version}\n\n${nextRelease.notes}',
         assets: ['CHANGELOG.md', 'package.json', 'package-lock.json'],
       },
     ],

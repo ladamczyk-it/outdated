@@ -1,0 +1,13 @@
+# A release tag asks cv to sync docs/outdated.mdx with this version.
+when:
+  - event: tag
+
+steps:
+  - name: trigger-docs
+    image: woodpeckerci/plugin-trigger
+    settings:
+      repositories:
+        - ladamczyk-it/cv@main
+      params: PROJECT=outdated
+      token:
+        from_secret: woodpecker_token
