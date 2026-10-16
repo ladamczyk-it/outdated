@@ -21,13 +21,11 @@
   "exports": {
     ".": {
       "types": "./lib/src/index.d.ts",
-      "import": "./lib/index.mjs",
-      "require": "./lib/index.cjs"
+      "import": "./lib/index.js"
     },
     "./package.json": "./package.json"
   },
-  "main": "./lib/index.cjs",
-  "module": "./lib/index.mjs",
+  "main": "./lib/index.js",
   "types": "./lib/src/index.d.ts",
   "bin": {
     "outdated": "bin/cli.js"
