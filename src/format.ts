@@ -12,7 +12,6 @@ const HEADER = [
   'Current',
   'Wanted',
   'Latest',
-  'Location',
   'Depended by',
   'Last publish',
   'Links',
@@ -59,7 +58,6 @@ const toCells = (pkg: IPackageResult, now: Date): string[] => [
   pkg.current ?? '-',
   pkg.wanted ?? pkg.current ?? '-',
   pkg.latest ?? '-',
-  pkg.location,
   pkg.workspace,
   publishText(pkg, now),
   linksText(pkg),
@@ -115,13 +113,12 @@ const linkPaint =
       .map((label, i) => hyperlink(i === 0 ? npmUrl(pkg) : (pkg.repository ?? ''), label))
       .join(' / ');
 
-// Same palette as npm outdated: wanted green, latest magenta, location and dependent dim.
+// Same palette as npm outdated: wanted green, latest magenta, dependent dim.
 const paints = (pkg: IPackageResult, c: TColors, links: boolean): TPaint[] => [
   nameColor(pkg, c),
   plain,
   pkg.outdated ? c.green : plain,
   latestColor(pkg, c),
-  c.dim,
   c.dim,
   plain,
   links ? linkPaint(pkg) : plain,

@@ -67,7 +67,6 @@ describe('format', () => {
       'Current',
       'Wanted',
       'Latest',
-      'Location',
       'Depended by',
       'Last publish',
       'Links',
@@ -126,7 +125,7 @@ describe('format', () => {
     const cells = row.split(/\s{2,}/);
 
     expect(cells.slice(1, 4)).toStrictEqual(['-', '-', '-']);
-    expect(cells[6]).toBe('-');
+    expect(cells[5]).toBe('-');
   });
 
   it('mirrors the npm outdated columns, ours last', () => {
@@ -134,7 +133,6 @@ describe('format', () => {
       table([
         pkg({
           name: 'typescript',
-          location: 'node_modules/typescript',
           current: '6.0.3',
           wanted: '6.0.3',
           latest: '7.0.2',
@@ -148,7 +146,6 @@ describe('format', () => {
       '6.0.3',
       '6.0.3',
       '7.0.2',
-      'node_modules/typescript',
       'demo',
       '2026-03-01 (4d ago)',
       'npm',
@@ -293,16 +290,15 @@ const bad = (workspace: string, name: string, overrides: Partial<IPackageResult>
 const renderWs = (result: ICheckResult, all = false) => formatTable(result, { all, now });
 
 describe('format workspace blocks', () => {
-  it('single-package output has no block line, node_modules location and project dependent', () => {
+  it('single-package output has no block line and the project as dependent', () => {
     const out = table([pkg()]);
 
     expect(out).not.toMatch(/\(\d+ problems?\)/);
-    expect(out).toContain('node_modules/left-pad');
     expect(
       out
         .split('\n')
         .find((l) => l.startsWith('left-pad'))
-        ?.split(/\s{2,}/)[5]
+        ?.split(/\s{2,}/)[4]
     ).toBe('demo');
   });
 
@@ -322,15 +318,15 @@ describe('format workspace blocks', () => {
     expect(renderWs(result, true)).toContain('api (0 problems)');
   });
 
-  it('Location shows location and Depended by shows workspace', () => {
+  it('Depended by shows the workspace and the table has no Location column', () => {
     const row =
       renderWs(mono([bad('web', 'ms')]))
         .split('\n')
         .find((l) => l.startsWith('ms')) ?? '';
     const cells = row.split(/\s{2,}/);
 
-    expect(cells[4]).toBe('packages/web/node_modules/ms');
-    expect(cells[5]).toBe('web');
+    expect(cells[4]).toBe('web');
+    expect(row).not.toContain('node_modules');
   });
 
   it('column widths are shared across blocks', () => {
@@ -392,7 +388,6 @@ describe('format colours and links', () => {
   it('uses the npm outdated palette', () => {
     const lagging = pkg({
       name: 'lag',
-      location: 'node_modules/lag',
       current: '1.0.0',
       wanted: '1.0.0',
       latest: '2.0.0',
@@ -417,7 +412,7 @@ describe('format colours and links', () => {
     expect(out).toContain('\u001b[31mbehind\u001b[39m');
     expect(out).toContain('\u001b[32m1.1.0\u001b[39m');
     expect(out).toContain('\u001b[35m2.0.0\u001b[39m');
-    expect(out).toContain('\u001b[2mnode_modules/lag');
+    expect(out).toContain('\u001b[2mdemo');
   });
 
   it('links npm and repository labels only when colour is on', () => {
