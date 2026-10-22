@@ -24,7 +24,7 @@ interface IContext {
   timeoutMs: number;
   now: Date;
   staleAfterMonths: number;
-  outdated: Record<string, IOutdatedEntry>;
+  outdated: Record<string, IOutdatedEntry[]>;
 }
 
 const major = (version: string | null): number | null => {
@@ -185,7 +185,7 @@ export const check = async (options: ICheckOptions = {}): Promise<ICheckResult> 
   };
 
   const packages = await mapPool(entries, options.concurrency ?? 6, async (entry) =>
-    buildRow(entry, await lookup(entry, ctx), outdated[outdatedKey(entry)], ctx)
+    buildRow(entry, await lookup(entry, ctx), outdated[outdatedKey(entry)]?.[0], ctx)
   );
 
   return {

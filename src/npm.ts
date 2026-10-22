@@ -2,6 +2,7 @@ export interface IOutdatedEntry {
   current: string | null;
   wanted: string | null;
   latest: string | null;
+  dependent: string | null;
 }
 
 export type TViewResult =
@@ -21,10 +22,14 @@ const str = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 
 const parseJson = (stdout: string): unknown => JSON.parse(stdout) as unknown;
 
-const toEntry = (value: unknown): IOutdatedEntry => {
-  const raw = Array.isArray(value) ? value[0] : value;
+const toEntry = (raw: unknown): IOutdatedEntry => {
   const e = isRecord(raw) ? raw : {};
-  return { current: str(e.current), wanted: str(e.wanted), latest: str(e.latest) };
+  return {
+    current: str(e.current),
+    wanted: str(e.wanted),
+    latest: str(e.latest),
+    dependent: str(e.dependent),
+  };
 };
 
 const errorText = (err: unknown): string | null => {
@@ -34,7 +39,7 @@ const errorText = (err: unknown): string | null => {
   return [str(err.code), str(err.summary)].filter(Boolean).join(' ');
 };
 
-export const parseOutdated = (stdout: string): Record<string, IOutdatedEntry> => {
+export const parseOutdated = (stdout: string): Record<string, IOutdatedEntry[]> => {
   if (stdout.trim() === '') {
     throw new Error('npm outdated printed empty output');
   }
@@ -51,7 +56,9 @@ export const parseOutdated = (stdout: string): Record<string, IOutdatedEntry> =>
   if (failure !== null) {
     throw new Error(`npm outdated failed: ${failure}`);
   }
-  return Object.fromEntries(Object.entries(parsed).map(([name, v]) => [name, toEntry(v)]));
+  return Object.fromEntries(
+    Object.entries(parsed).map(([name, v]) => [name, (Array.isArray(v) ? v : [v]).map(toEntry)])
+  );
 };
 
 // engines may be an array or odd shapes in old packages; only `{ node: "<range>" }` counts.
