@@ -1,3 +1,34 @@
+# [2.0.0](https://github.com/ladamczyk-it/outdated/compare/v1.1.2...v2.0.0) (2026-10-22)
+
+
+* feat(check)!: check every npm workspace, view each package once ([9381c5a](https://github.com/ladamczyk-it/outdated/commit/9381c5a0cd6112a72c4a43037236021795f7de61))
+* feat(cli)!: show only problems by default, add --all ([e401bc5](https://github.com/ladamczyk-it/outdated/commit/e401bc5fa3706907a3dd31889be2cd554596784f))
+
+
+### Bug Fixes
+
+* **npm:** keep every dependent from npm outdated output ([c9cc4d1](https://github.com/ladamczyk-it/outdated/commit/c9cc4d1d16d369bd01dfc1145f8373cf1bb976c9))
+
+
+### Features
+
+* **deps:** discover npm workspaces and find nested installs ([48ca152](https://github.com/ladamczyk-it/outdated/commit/48ca152c7b4192b06d9a39554ad97176d51b0dc9))
+* **format:** drop the Location column from the table ([0113210](https://github.com/ladamczyk-it/outdated/commit/01132108c652b7478b2938c6db3b881ea93becb1))
+* **format:** hide ok rows unless all is set ([97b5bd7](https://github.com/ladamczyk-it/outdated/commit/97b5bd7eab36cf340f5b5a01c71483b57b542267))
+* **format:** one table block per workspace with problem counts ([e679bb4](https://github.com/ladamczyk-it/outdated/commit/e679bb4658a6bf368b278080baf4358a37f65668))
+
+
+### BREAKING CHANGES
+
+* JSON output is schemaVersion 2. Every package row carries workspace and location, every skipped entry carries workspace, and the result lists workspaces. At an npm workspaces root, rows are reported per (workspace, dependency).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BaAHw4LbFwp72u14kcTtHS
+* --only-problems is removed. The table now hides ok packages by default; pass --all to show them. JSON output is unchanged and never filtered.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01BaAHw4LbFwp72u14kcTtHS
+
 ## [1.1.2](https://github.com/ladamczyk-it/outdated/compare/v1.1.1...v1.1.2) (2026-10-11)
 
 
