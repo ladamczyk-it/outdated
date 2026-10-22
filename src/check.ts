@@ -1,6 +1,6 @@
 import { resolve } from 'path';
 
-import { readDeps, readInstalledVersion, type IDepEntry } from './deps.ts';
+import { readDeps, findInstalled, type IDepEntry } from './deps.ts';
 import { parseOutdated, parseView, type IOutdatedEntry, type TViewResult } from './npm.ts';
 import { mapPool } from './pool.ts';
 import { createNpmRunner } from './runner.ts';
@@ -127,7 +127,7 @@ const buildRow = (
   ctx: IContext
 ): IPackageResult => {
   const viewed = 'latest' in view ? view : null;
-  const current = hit?.current ?? readInstalledVersion(ctx.cwd, entry.name);
+  const current = hit?.current ?? findInstalled([ctx.cwd], entry.name)?.version ?? null;
   const latest = viewed?.latest ?? hit?.latest ?? null;
   const published = viewed ? new Date(viewed.lastPublish) : null;
   const outdated = hit !== undefined;
