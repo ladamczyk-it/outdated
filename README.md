@@ -17,7 +17,7 @@ npm i -g @ladamczyk/outdated
 outdated [options]
 ```
 
-The table mirrors `npm outdated` (`Package`, `Current`, `Wanted`, `Latest`, `Location`, `Depended by`) and adds `Last publish` and `Flags` at the end. It is split into `dependencies`, `devDependencies` and `optionalDependencies` sections (empty ones are omitted); packages keep their `package.json` order and the columns line up across sections. `Wanted` falls back to `Current` for packages `npm outdated` does not list.
+The table mirrors `npm outdated` (`Package`, `Current`, `Wanted`, `Latest`, `Location`, `Depended by`) and adds `Last publish` and `Flags` at the end. It is split into `dependencies`, `devDependencies` and `optionalDependencies` sections (empty ones are omitted); packages keep their `package.json` order and the columns line up across sections. `Wanted` falls back to `Current` for packages `npm outdated` does not list. Only problem rows are shown by default; `--all` shows every package too. At an npm workspaces root the table has one block per workspace, headed `<name> (N problems)` (`1 problem` when singular): `Depended by` is that workspace and `Location` is the installed copy's path relative to the root (e.g. `packages/web/node_modules/ms`, or `node_modules/ms` when hoisted).
 
 Flags are coloured: deprecated red, stale yellow, outdated cyan, unknown magenta, blocked blue, ok green; a major version bump shows `Latest` in red. The `Links` column holds `npm` and, when the package declares a repository, `repo`; each label is a hyperlink in terminals that support them. Colours and links turn off automatically when output is piped or `NO_COLOR` is set, and `--json` never contains either.
 
@@ -42,16 +42,19 @@ Flags are coloured: deprecated red, stale yellow, outdated cyan, unknown magenta
 
 ## JSON schema
 
-When `--json` is used, the output conforms to the following schema (schemaVersion: 1):
+When `--json` is used, the output conforms to the following schema (schemaVersion: 2):
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "generatedAt": "ISO 8601 timestamp",
   "staleAfterMonths": 6,
   "project": "package.json name, else the directory name",
+  "workspaces": ["root name", "workspace names in discovery order"],
   "packages": [
     {
+      "workspace": "package name of the owning workspace, else the project name",
+      "location": "root-relative path of the installed copy, else node_modules/<name>",
       "name": "package name",
       "queriedName": "real package for npm: aliases, else null",
       "type": "prod | dev | optional",
@@ -82,6 +85,7 @@ When `--json` is used, the output conforms to the following schema (schemaVersio
   },
   "skipped": [
     {
+      "workspace": "package name of the owning workspace, else the project name",
       "name": "package name",
       "type": "prod | dev | optional",
       "specifier": "version specifier",
@@ -91,7 +95,7 @@ When `--json` is used, the output conforms to the following schema (schemaVersio
 }
 ```
 
-Note that the table hides ok packages unless `--all`, but the JSON `packages` array is never filtered.
+Note that the table hides ok packages unless `--all`, but the JSON `packages` array is never filtered. `summary` counts one per (workspace, dependency) row, so a dependency installed in several workspaces is counted once for each. `workspaces` has length 1 for a single-package project.
 
 ## Behaviour notes
 
@@ -101,7 +105,9 @@ Note that the table hides ok packages unless `--all`, but the JSON `packages` ar
 
 **Blocked by Node:** `npm outdated` resolves `Latest` with the running Node's `engines` in mind, so a release that needs a newer Node is skipped. `outdated` notices when the registry's latest release differs from what npm settled on, and instead of `ok` it prints `latest needs node <engines.node of that release>` (flag `blocked`, field `latestNode`). It is informational: it is not accepted by `--fail-on`. A package with a deprecated latest release, or one that declares no `engines.node`, is never marked blocked.
 
-**Specifiers:** Non-npm specifiers (file:, link:, git:, etc.) and invalid package names are skipped with a reason.
+**Specifiers:** Non-npm specifiers (file:, link:, git:, etc.), invalid package names, and dependencies named like a local workspace package (reason `workspace package`) are skipped with a reason.
+
+**Workspaces:** npm `workspaces` (an array, or `{ packages }`, with globs and `!` negation) are detected automatically from the root `package.json`. Each workspace is shown as its own block, and `npm view` runs once per unique package across all of them. A dependency named like a local workspace package is skipped with reason `workspace package`. Only npm workspaces are read; pnpm and yarn workspace files are not. Running with `--cwd` inside one workspace folder checks that workspace alone. Two workspaces with the same folder name under different parents can't be told apart in `npm outdated` data, so the first match wins.
 
 **Aliases:** When a dependency uses `npm:` prefix (alias syntax), the lookup queries the real package name.
 

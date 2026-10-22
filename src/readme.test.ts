@@ -46,4 +46,28 @@ describe('README', () => {
     expect(readme).toMatch(/schemaVersion/);
     expect(readme).toMatch(/Windows/);
   });
+
+  it('documents schemaVersion 2 and no longer schemaVersion 1', () => {
+    expect(readme).toContain('"schemaVersion": 2');
+    expect(readme).not.toContain('"schemaVersion": 1');
+  });
+
+  it('documents workspaces, workspace and location in the JSON schema', () => {
+    const schemaStart = readme.indexOf('## JSON schema');
+    const schemaEnd = readme.indexOf('## Behaviour notes');
+    const schema = readme.slice(schemaStart, schemaEnd);
+    expect(schema).toContain('"workspaces"');
+    expect(schema).toContain('"workspace"');
+    expect(schema).toContain('"location"');
+  });
+
+  it('documents the workspace package skip reason', () => {
+    expect(readme).toContain('workspace package');
+  });
+
+  it('mentions --all in the table description', () => {
+    const tableParagraph =
+      readme.split('\n').find((line) => line.startsWith('The table mirrors')) ?? '';
+    expect(tableParagraph).toContain('--all');
+  });
 });
