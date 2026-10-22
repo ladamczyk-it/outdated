@@ -25,7 +25,7 @@ describe('README', () => {
       '--ignore',
       '--concurrency',
       '--json',
-      '--only-problems',
+      '--all',
       '--fail-on',
       '--help',
       '--version',

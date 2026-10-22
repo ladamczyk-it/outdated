@@ -40,7 +40,7 @@ describe('parseCliOptions', () => {
     expect([...options.include].sort()).toStrictEqual(['dev', 'optional', 'prod']);
     expect(options.ignore).toStrictEqual([]);
     expect(options.json).toBe(false);
-    expect(options.onlyProblems).toBe(false);
+    expect(options.all).toBe(false);
     expect(options.failOn).toStrictEqual([]);
     expect('cwd' in options).toBe(false);
   });
@@ -80,7 +80,15 @@ describe('parseCliOptions', () => {
 
   it('unknown flags throw', () => {
     expect(() => parseCliOptions({ nope: true })).toThrow('nope');
-    expect(() => parseCliOptions({ '--': [], json: true, onlyProblems: true })).not.toThrow();
+    expect(() => parseCliOptions({ '--': [], onlyProblems: true })).toThrow(
+      'Unknown option: onlyProblems'
+    );
+  });
+
+  it('all is a switch', () => {
+    expect(parseCliOptions({ '--': [] }).all).toBe(false);
+    expect(parseCliOptions({ '--': [], all: true }).all).toBe(true);
+    expect(() => parseCliOptions({ '--': [], all: 'x' })).toThrow('--all is a switch');
   });
 
   it('cwd coercion', () => {

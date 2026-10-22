@@ -37,7 +37,7 @@ const buildCli = (): ReturnType<typeof cac> => {
     .option('--ignore <pkgs>', 'Comma-separated package names to skip')
     .option('--concurrency <n>', 'Parallel npm view lookups (default: 6)')
     .option('--json', 'Output machine-readable JSON')
-    .option('--only-problems', 'Hide ok packages from the table')
+    .option('--all', 'Show ok packages in the table too')
     .option('--fail-on <list>', 'Exit 1 when any of stale,deprecated,outdated,unknown is found');
 };
 
@@ -68,9 +68,7 @@ const execute = async (
     runner,
     now,
   });
-  const out = options.json
-    ? formatJson(result)
-    : formatTable(result, { all: !options.onlyProblems, now });
+  const out = options.json ? formatJson(result) : formatTable(result, { all: options.all, now });
 
   return { stdout: out, code: exitCodeFor(result, options.failOn) };
 };

@@ -29,7 +29,7 @@ Flags are coloured: deprecated red, stale yellow, outdated cyan, unknown magenta
 - `--ignore <pkgs>` — Comma-separated package names to skip entirely
 - `--concurrency <n>` — Parallel `npm view` lookups (default: `6`)
 - `--json` — Output machine-readable JSON
-- `--only-problems` — Hide ok packages from the table
+- `--all` — Show ok packages in the table too (by default only problems are shown)
 - `--fail-on <list>` — Exit 1 when any of `stale`, `deprecated`, `outdated`, `unknown` is found (default: none)
 - `--help, -h` — Display help message
 - `--version, -v` — Display version number
@@ -91,7 +91,7 @@ When `--json` is used, the output conforms to the following schema (schemaVersio
 }
 ```
 
-Note that `--only-problems` filters the table output but never filters the JSON `packages` array.
+Note that the table hides ok packages unless `--all`, but the JSON `packages` array is never filtered.
 
 ## Behaviour notes
 
