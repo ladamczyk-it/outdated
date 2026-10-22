@@ -202,6 +202,27 @@ describe('run options', () => {
   });
 });
 
+describe('run workspaces', () => {
+  it('prints one block per workspace with problems and exits 0', async () => {
+    const dir = project({ name: 'root', private: true, workspaces: ['packages/*'] });
+    for (const name of ['web', 'api']) {
+      const wsDir = path.join(dir, 'packages', name);
+      fs.mkdirSync(wsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(wsDir, 'package.json'),
+        JSON.stringify({ name, dependencies: { ms: '1.0.0' } })
+      );
+    }
+    const runner = fakeRunner({ views: { ms: view(OLD) } });
+    const { stdout, code } = await exec([], dir, runner);
+
+    expect(code).toBe(EExitCode.OK);
+    expect(stdout).toContain('web (1 problem)');
+    expect(stdout).toContain('api (1 problem)');
+    expect(stdout).not.toContain('root (');
+  });
+});
+
 describe('run help and version', () => {
   it.each([['-h'], ['--help']])('help and version: %s lists every option', async (flag) => {
     const result = await run([flag]);

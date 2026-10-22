@@ -131,7 +131,15 @@ describe('format', () => {
 
   it('mirrors the npm outdated columns, ours last', () => {
     const row =
-      table([pkg({ name: 'typescript', current: '6.0.3', wanted: '6.0.3', latest: '7.0.2' })])
+      table([
+        pkg({
+          name: 'typescript',
+          location: 'node_modules/typescript',
+          current: '6.0.3',
+          wanted: '6.0.3',
+          latest: '7.0.2',
+        }),
+      ])
         .split('\n')
         .find((l) => l.startsWith('typescript')) ?? '';
 
@@ -269,6 +277,99 @@ describe('format', () => {
   });
 });
 
+const mono = (packages: IPackageResult[], skipped: ISkipped[] = []): ICheckResult => ({
+  ...makeResult(packages, skipped),
+  workspaces: ['demo', 'web', 'api'],
+});
+const bad = (workspace: string, name: string, overrides: Partial<IPackageResult> = {}) =>
+  pkg({
+    workspace,
+    name,
+    location: `packages/${workspace}/node_modules/${name}`,
+    flags: ['stale'],
+    stale: true,
+    ...overrides,
+  });
+const renderWs = (result: ICheckResult, all = false) => formatTable(result, { all, now });
+
+describe('format workspace blocks', () => {
+  it('single-package output has no block line, node_modules location and project dependent', () => {
+    const out = table([pkg()]);
+
+    expect(out).not.toMatch(/\(\d+ problems?\)/);
+    expect(out).toContain('node_modules/left-pad');
+    expect(
+      out
+        .split('\n')
+        .find((l) => l.startsWith('left-pad'))
+        ?.split(/\s{2,}/)[5]
+    ).toBe('demo');
+  });
+
+  it('renders a block per workspace in workspaces order with problem counts', () => {
+    const out = renderWs(mono([bad('api', 'a1'), bad('web', 'w1'), bad('web', 'w2')])).split('\n');
+
+    expect(out.filter((l) => /\(\d+ problems?\)$/.test(l))).toStrictEqual([
+      'web (2 problems)',
+      'api (1 problem)',
+    ]);
+  });
+
+  it('all-ok workspace has no block without all, and (0 problems) with all', () => {
+    const result = mono([bad('web', 'w1'), pkg({ workspace: 'api', name: 'fine' })]);
+
+    expect(renderWs(result)).not.toContain('api (');
+    expect(renderWs(result, true)).toContain('api (0 problems)');
+  });
+
+  it('Location shows location and Depended by shows workspace', () => {
+    const row =
+      renderWs(mono([bad('web', 'ms')]))
+        .split('\n')
+        .find((l) => l.startsWith('ms')) ?? '';
+    const cells = row.split(/\s{2,}/);
+
+    expect(cells[4]).toBe('packages/web/node_modules/ms');
+    expect(cells[5]).toBe('web');
+  });
+
+  it('column widths are shared across blocks', () => {
+    const lines = renderWs(mono([bad('web', 'w1'), bad('api', 'a-very-long-package-name')])).split(
+      '\n'
+    );
+    const row = lines.find((l) => l.startsWith('w1')) ?? '';
+
+    expect(row.indexOf('1.0.0')).toBeGreaterThanOrEqual('a-very-long-package-name'.length);
+  });
+
+  it('monorepo with no problem rows prints No problems found and the footer', () => {
+    const out = renderWs(mono([pkg({ workspace: 'web', name: 'fine' })]));
+
+    expect(out).toContain('No problems found');
+    expect(out).not.toMatch(/\(\d+ problems?\)/);
+    expect(out).toContain('1 packages');
+  });
+
+  it('monorepo skipped list is prefixed by workspace', () => {
+    const out = renderWs(
+      mono(
+        [pkg()],
+        [
+          {
+            workspace: 'web',
+            name: 'api',
+            type: 'prod',
+            specifier: '^1.0.0',
+            reason: 'workspace package',
+          },
+        ]
+      )
+    );
+
+    expect(out).toMatch(/web: api\s+\^1\.0\.0 — workspace package/);
+  });
+});
+
 describe('format colours and links', () => {
   it('colours flags only when asked', () => {
     const packages = [
@@ -291,6 +392,7 @@ describe('format colours and links', () => {
   it('uses the npm outdated palette', () => {
     const lagging = pkg({
       name: 'lag',
+      location: 'node_modules/lag',
       current: '1.0.0',
       wanted: '1.0.0',
       latest: '2.0.0',
