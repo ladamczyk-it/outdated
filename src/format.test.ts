@@ -7,6 +7,8 @@ import type { ICheckResult, IPackageResult, ISkipped } from './types.ts';
 const now = new Date('2026-03-05T00:00:00.000Z');
 
 const pkg = (overrides: Partial<IPackageResult> = {}): IPackageResult => ({
+  workspace: 'demo',
+  location: 'node_modules/left-pad',
   name: 'left-pad',
   queriedName: null,
   type: 'prod',
@@ -27,10 +29,11 @@ const pkg = (overrides: Partial<IPackageResult> = {}): IPackageResult => ({
 });
 
 const makeResult = (packages: IPackageResult[], skipped: ISkipped[] = []): ICheckResult => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: now.toISOString(),
   staleAfterMonths: 6,
   project: 'demo',
+  workspaces: ['demo'],
   packages,
   summary: {
     total: packages.length,
@@ -244,7 +247,13 @@ describe('format', () => {
 
   it('skipped section', () => {
     const out = table([pkg()], true, [
-      { name: 'local-dep', type: 'prod', specifier: 'file:../x', reason: 'local path' },
+      {
+        workspace: 'demo',
+        name: 'local-dep',
+        type: 'prod',
+        specifier: 'file:../x',
+        reason: 'local path',
+      },
     ]);
 
     expect(out).toContain('Skipped:');

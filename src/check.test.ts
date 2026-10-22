@@ -214,7 +214,7 @@ describe('check failures', () => {
 
     await expect(run(dir, { outdated: '' })).rejects.toThrow(/empty output/);
     await expect(run(dir, { outdated: 'nope' })).rejects.toThrow(/invalid JSON/);
-    await expect(run(dir, { outdated: '{}' })).resolves.toHaveProperty('schemaVersion', 1);
+    await expect(run(dir, { outdated: '{}' })).resolves.toHaveProperty('schemaVersion', 2);
   });
 
   it('invalid names are never queried', async () => {
@@ -375,7 +375,7 @@ describe('check results', () => {
       result.packages.filter((p) => p.flags.includes(flag)).length;
     const { summary } = result;
 
-    expect(result.schemaVersion).toBe(1);
+    expect(result.schemaVersion).toBe(2);
     expect(result.generatedAt).toBe(NOW.toISOString());
     expect(result.staleAfterMonths).toBe(6);
     expect(summary.total).toBe(result.packages.length);
@@ -398,6 +398,187 @@ describe('check results', () => {
       summary.deprecated + summary.stale + summary.outdated + summary.unknown + summary.ok;
     expect(flagTotal).toBeGreaterThan(summary.total);
     expect(result.skipped.map((s) => s.name)).toStrictEqual(['local']);
+  });
+});
+
+const tree = (files: Record<string, unknown>): string => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'outdated-check-'));
+  dirs.push(dir);
+  for (const [rel, json] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), JSON.stringify(json));
+  }
+  return dir;
+};
+
+const rows = (result: ICheckResult, name: string): IPackageResult[] =>
+  result.packages.filter((p) => p.name === name);
+
+const viewsOf = (calls: string[][]): string[] =>
+  calls.filter((c) => c[0] === 'view').map((c) => String(c[1]));
+
+describe('check workspaces', () => {
+  it('single package reports schema 2, one workspace and default locations', async () => {
+    const dir = project({ ms: '1.0.0', lodash: '1.0.0' });
+    const result = await run(dir, {});
+    const name = path.basename(dir);
+
+    expect(result.schemaVersion).toBe(2);
+    expect(result.workspaces).toStrictEqual([name]);
+    expect(result.packages.map((p) => [p.workspace, p.location])).toStrictEqual([
+      [name, 'node_modules/ms'],
+      [name, 'node_modules/lodash'],
+    ]);
+  });
+
+  it('views a dependency shared by two workspaces once, with one row each', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/*'] },
+      'packages/web/package.json': { name: 'web', dependencies: { lodash: '^4' } },
+      'packages/api/package.json': { name: 'api', dependencies: { lodash: '^4' } },
+    });
+    const calls: string[][] = [];
+    const result = await run(dir, {}, {}, calls);
+
+    expect(viewsOf(calls)).toStrictEqual(['lodash']);
+    expect(rows(result, 'lodash').map((p) => p.workspace)).toStrictEqual(['api', 'web']);
+  });
+
+  it('lists the root then workspaces in discovery order', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/*'] },
+      'packages/web/package.json': {},
+      'packages/api/package.json': {},
+    });
+    const result = await run(dir, {});
+
+    expect(result.workspaces).toStrictEqual([path.basename(dir), 'api', 'web']);
+  });
+
+  it('picks the outdated entry whose dependent is the workspace folder', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/*'], dependencies: { ms: '^0.9' } },
+      'packages/api/package.json': { name: 'api', dependencies: { ms: '^1' } },
+    });
+    const result = await run(dir, {
+      outdated: JSON.stringify({
+        ms: [
+          { current: '1.0.0', wanted: '1.0.0', latest: '2.0.0', dependent: 'api' },
+          { current: '0.9.0', wanted: '0.9.0', latest: '2.0.0', dependent: path.basename(dir) },
+        ],
+      }),
+    });
+    const [rootRow, apiRow] = rows(result, 'ms');
+
+    expect(apiRow?.workspace).toBe('api');
+    expect(apiRow?.current).toBe('1.0.0');
+    expect(apiRow?.outdated).toBe(true);
+    expect(rootRow?.workspace).toBe(path.basename(dir));
+    expect(rootRow?.current).toBe('0.9.0');
+  });
+
+  it('prefers the workspace install over the root install', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/*'] },
+      'packages/web/package.json': { name: 'web', dependencies: { ms: '^2' } },
+      'packages/web/node_modules/ms/package.json': { version: '2.1.3' },
+      'node_modules/ms/package.json': { version: '1.0.0' },
+    });
+    const result = await run(dir, {});
+    const [web] = rows(result, 'ms');
+
+    expect(web?.workspace).toBe('web');
+    expect(web?.current).toBe('2.1.3');
+    expect(web?.location).toBe('packages/web/node_modules/ms');
+  });
+
+  it('matches a scoped workspace folder to an @scope/name dependent', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/@x/*'], dependencies: { ms: '^1' } },
+      'packages/@x/core/package.json': { name: '@x/core', dependencies: { ms: '^1' } },
+    });
+    const result = await run(dir, {
+      outdated: JSON.stringify({
+        ms: [{ current: '1.0.0', wanted: '1.0.0', latest: '2.0.0', dependent: '@x/core' }],
+      }),
+    });
+    const core = rows(result, 'ms').find((p) => p.workspace === '@x/core');
+
+    expect(core?.outdated).toBe(true);
+    expect(core?.current).toBe('1.0.0');
+  });
+
+  it('skips a dependency on a local workspace without viewing it', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/*'] },
+      'packages/api/package.json': { name: 'api' },
+      'packages/web/package.json': { name: 'web', dependencies: { api: '*' } },
+    });
+    const calls: string[][] = [];
+    const result = await run(dir, {}, {}, calls);
+
+    expect(result.skipped).toContainEqual({
+      workspace: 'web',
+      name: 'api',
+      type: 'prod',
+      specifier: '*',
+      reason: 'workspace package',
+    });
+    expect(viewsOf(calls)).not.toContain('api');
+  });
+
+  it('summary counts one row per workspace and dependency', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/*'], dependencies: { ms: '1' } },
+      'packages/api/package.json': { name: 'api', dependencies: { lodash: '1' } },
+      'packages/web/package.json': { name: 'web', dependencies: { lodash: '1', ms: '1' } },
+    });
+    const result = await run(dir, { views: { lodash: viewJson({ published: OLD }) } });
+
+    expect(result.summary.total).toBe(4);
+    expect(result.packages).toHaveLength(4);
+    expect(result.summary.stale).toBe(2);
+  });
+
+  it('orders skipped by workspace, then by name', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/*'], dependencies: { z: 'file:z', m: 'file:m' } },
+      'packages/api/package.json': { name: 'api', dependencies: { a: 'file:a' } },
+    });
+    const result = await run(dir, {});
+
+    expect(result.skipped.map((s) => [s.workspace, s.name])).toStrictEqual([
+      [path.basename(dir), 'm'],
+      [path.basename(dir), 'z'],
+      ['api', 'a'],
+    ]);
+  });
+
+  it('concurrency 1 keeps one view in flight across workspaces', async () => {
+    const dir = tree({
+      'package.json': { workspaces: ['packages/*'] },
+      'packages/api/package.json': { name: 'api', dependencies: { a: '1', b: '1' } },
+      'packages/web/package.json': { name: 'web', dependencies: { b: '1', c: '1' } },
+    });
+    const calls: string[][] = [];
+    let active = 0;
+    let max = 0;
+    await run(
+      dir,
+      {
+        onView: async () => {
+          active += 1;
+          max = Math.max(max, active);
+          await sleep(5);
+          active -= 1;
+        },
+      },
+      { concurrency: 1 },
+      calls
+    );
+
+    expect(viewsOf(calls).sort()).toStrictEqual(['a', 'b', 'c']);
+    expect(max).toBe(1);
   });
 });
 

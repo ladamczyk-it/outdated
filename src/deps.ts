@@ -111,6 +111,7 @@ export function readDeps(
     throw new Error(`Cannot read or parse package.json at ${file}`);
   }
 
+  const project = pkgName(pkg, cwd);
   const seen: TSeen = new Map();
   collect(pkg, include, seen);
 
@@ -121,12 +122,18 @@ export function readDeps(
       continue;
     }
     if (workspaceNames?.has(name)) {
-      skipped.push({ name, type, specifier, reason: 'workspace package' });
+      skipped.push({ workspace: project, name, type, specifier, reason: 'workspace package' });
       continue;
     }
     const prefix = UNSUPPORTED.find((p) => specifier.startsWith(p));
     if (prefix) {
-      skipped.push({ name, type, specifier, reason: `unsupported specifier (${prefix})` });
+      skipped.push({
+        workspace: project,
+        name,
+        type,
+        specifier,
+        reason: `unsupported specifier (${prefix})`,
+      });
       continue;
     }
     const queriedName = aliasTarget(specifier);
@@ -138,7 +145,7 @@ export function readDeps(
       validName: NAME_RE.test(queriedName ?? name),
     });
   }
-  return { project: pkgName(pkg, cwd), entries, skipped };
+  return { project, entries, skipped };
 }
 
 export function findInstalled(

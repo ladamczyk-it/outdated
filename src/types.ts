@@ -17,6 +17,8 @@ export interface ICheckOptions {
 }
 
 export interface IPackageResult {
+  workspace: string; // owning workspace's package name (name || folder basename); root / single-package = project
+  location: string; // root-relative POSIX path of the installed copy (workspace dir first, then root), else node_modules/<name>
   name: string; // dependency key in package.json (alias key for npm: aliases)
   queriedName: string | null; // real package for npm: aliases, else null
   type: TDepType; // precedence prod > optional > dev after dedupe
@@ -36,6 +38,7 @@ export interface IPackageResult {
 }
 
 export interface ISkipped {
+  workspace: string;
   name: string;
   type: TDepType;
   specifier: string;
@@ -54,11 +57,12 @@ export interface ISummary {
 }
 
 export interface ICheckResult {
-  schemaVersion: 1;
+  schemaVersion: 2;
   generatedAt: string; // ISO of options.now
   staleAfterMonths: number;
   project: string; // package.json `name`, else the directory name (npm outdated's "Depended by")
-  packages: IPackageResult[]; // package.json order (dependencies, optionalDependencies, devDependencies; first occurrence wins)
-  summary: ISummary;
-  skipped: ISkipped[]; // sorted by name
+  workspaces: string[]; // [project, ...workspace names in discovery order]; length 1 <=> single-package layout
+  packages: IPackageResult[]; // one per (workspace, dep): workspaces order, package.json order inside each
+  summary: ISummary; // counts rows
+  skipped: ISkipped[]; // workspaces order, then by name inside each workspace
 }
