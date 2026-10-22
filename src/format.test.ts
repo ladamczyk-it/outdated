@@ -7,6 +7,8 @@ import type { ICheckResult, IPackageResult, ISkipped } from './types.ts';
 const now = new Date('2026-03-05T00:00:00.000Z');
 
 const pkg = (overrides: Partial<IPackageResult> = {}): IPackageResult => ({
+  workspace: 'demo',
+  location: 'node_modules/left-pad',
   name: 'left-pad',
   queriedName: null,
   type: 'prod',
@@ -27,10 +29,11 @@ const pkg = (overrides: Partial<IPackageResult> = {}): IPackageResult => ({
 });
 
 const makeResult = (packages: IPackageResult[], skipped: ISkipped[] = []): ICheckResult => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: now.toISOString(),
   staleAfterMonths: 6,
   project: 'demo',
+  workspaces: ['demo'],
   packages,
   summary: {
     total: packages.length,
@@ -45,8 +48,8 @@ const makeResult = (packages: IPackageResult[], skipped: ISkipped[] = []): IChec
   skipped,
 });
 
-const table = (packages: IPackageResult[], onlyProblems = false, skipped: ISkipped[] = []) =>
-  formatTable(makeResult(packages, skipped), { onlyProblems, now });
+const table = (packages: IPackageResult[], all = true, skipped: ISkipped[] = []) =>
+  formatTable(makeResult(packages, skipped), { all, now });
 
 describe('format', () => {
   it('formatJson is the stable document', () => {
@@ -64,7 +67,6 @@ describe('format', () => {
       'Current',
       'Wanted',
       'Latest',
-      'Location',
       'Depended by',
       'Last publish',
       'Links',
@@ -123,12 +125,19 @@ describe('format', () => {
     const cells = row.split(/\s{2,}/);
 
     expect(cells.slice(1, 4)).toStrictEqual(['-', '-', '-']);
-    expect(cells[6]).toBe('-');
+    expect(cells[5]).toBe('-');
   });
 
   it('mirrors the npm outdated columns, ours last', () => {
     const row =
-      table([pkg({ name: 'typescript', current: '6.0.3', wanted: '6.0.3', latest: '7.0.2' })])
+      table([
+        pkg({
+          name: 'typescript',
+          current: '6.0.3',
+          wanted: '6.0.3',
+          latest: '7.0.2',
+        }),
+      ])
         .split('\n')
         .find((l) => l.startsWith('typescript')) ?? '';
 
@@ -137,7 +146,6 @@ describe('format', () => {
       '6.0.3',
       '6.0.3',
       '7.0.2',
-      'node_modules/typescript',
       'demo',
       '2026-03-01 (4d ago)',
       'npm',
@@ -199,10 +207,10 @@ describe('format', () => {
     );
   });
 
-  it('only-problems hides ok rows', () => {
+  it('hides ok rows without all', () => {
     const packages = [pkg({ name: 'bad', flags: ['stale'], stale: true }), pkg({ name: 'fine' })];
-    const hidden = table(packages, true);
-    const shown = table(packages, false);
+    const hidden = table(packages, false);
+    const shown = table(packages, true);
 
     expect(hidden).toContain('bad');
     expect(hidden).not.toContain('fine');
@@ -212,9 +220,45 @@ describe('format', () => {
     expect(shown).toContain('fine');
   });
 
+  it('all shows ok rows alongside problems', () => {
+    const out = table(
+      [pkg({ name: 'bad', deprecated: 'gone', flags: ['deprecated'] }), pkg({ name: 'fine' })],
+      true
+    );
+
+    expect(out).toContain('bad');
+    expect(out).toContain('fine');
+  });
+
+  it('blocked rows are not ok and stay visible without all', () => {
+    const out = table([pkg({ name: 'blocked-pkg', latestNode: '^22', flags: ['blocked'] })], false);
+
+    expect(out).toContain('blocked-pkg');
+  });
+
+  it('only ok rows without all print No problems found, no header, and the footer', () => {
+    const out = table([pkg({ name: 'one' }), pkg({ name: 'two' })], false);
+
+    expect(out).toContain('No problems found');
+    expect(out).not.toContain('Package');
+    expect(out).toContain('2 packages');
+  });
+
+  it('zero packages without all still print No dependencies found', () => {
+    const out = table([], false);
+
+    expect(out).toContain('No dependencies found');
+  });
+
   it('skipped section', () => {
-    const out = table([pkg()], false, [
-      { name: 'local-dep', type: 'prod', specifier: 'file:../x', reason: 'local path' },
+    const out = table([pkg()], true, [
+      {
+        workspace: 'demo',
+        name: 'local-dep',
+        type: 'prod',
+        specifier: 'file:../x',
+        reason: 'local path',
+      },
     ]);
 
     expect(out).toContain('Skipped:');
@@ -230,14 +274,105 @@ describe('format', () => {
   });
 });
 
+const mono = (packages: IPackageResult[], skipped: ISkipped[] = []): ICheckResult => ({
+  ...makeResult(packages, skipped),
+  workspaces: ['demo', 'web', 'api'],
+});
+const bad = (workspace: string, name: string, overrides: Partial<IPackageResult> = {}) =>
+  pkg({
+    workspace,
+    name,
+    location: `packages/${workspace}/node_modules/${name}`,
+    flags: ['stale'],
+    stale: true,
+    ...overrides,
+  });
+const renderWs = (result: ICheckResult, all = false) => formatTable(result, { all, now });
+
+describe('format workspace blocks', () => {
+  it('single-package output has no block line and the project as dependent', () => {
+    const out = table([pkg()]);
+
+    expect(out).not.toMatch(/\(\d+ problems?\)/);
+    expect(
+      out
+        .split('\n')
+        .find((l) => l.startsWith('left-pad'))
+        ?.split(/\s{2,}/)[4]
+    ).toBe('demo');
+  });
+
+  it('renders a block per workspace in workspaces order with problem counts', () => {
+    const out = renderWs(mono([bad('api', 'a1'), bad('web', 'w1'), bad('web', 'w2')])).split('\n');
+
+    expect(out.filter((l) => /\(\d+ problems?\)$/.test(l))).toStrictEqual([
+      'web (2 problems)',
+      'api (1 problem)',
+    ]);
+  });
+
+  it('all-ok workspace has no block without all, and (0 problems) with all', () => {
+    const result = mono([bad('web', 'w1'), pkg({ workspace: 'api', name: 'fine' })]);
+
+    expect(renderWs(result)).not.toContain('api (');
+    expect(renderWs(result, true)).toContain('api (0 problems)');
+  });
+
+  it('Depended by shows the workspace and the table has no Location column', () => {
+    const row =
+      renderWs(mono([bad('web', 'ms')]))
+        .split('\n')
+        .find((l) => l.startsWith('ms')) ?? '';
+    const cells = row.split(/\s{2,}/);
+
+    expect(cells[4]).toBe('web');
+    expect(row).not.toContain('node_modules');
+  });
+
+  it('column widths are shared across blocks', () => {
+    const lines = renderWs(mono([bad('web', 'w1'), bad('api', 'a-very-long-package-name')])).split(
+      '\n'
+    );
+    const row = lines.find((l) => l.startsWith('w1')) ?? '';
+
+    expect(row.indexOf('1.0.0')).toBeGreaterThanOrEqual('a-very-long-package-name'.length);
+  });
+
+  it('monorepo with no problem rows prints No problems found and the footer', () => {
+    const out = renderWs(mono([pkg({ workspace: 'web', name: 'fine' })]));
+
+    expect(out).toContain('No problems found');
+    expect(out).not.toMatch(/\(\d+ problems?\)/);
+    expect(out).toContain('1 packages');
+  });
+
+  it('monorepo skipped list is prefixed by workspace', () => {
+    const out = renderWs(
+      mono(
+        [pkg()],
+        [
+          {
+            workspace: 'web',
+            name: 'api',
+            type: 'prod',
+            specifier: '^1.0.0',
+            reason: 'workspace package',
+          },
+        ]
+      )
+    );
+
+    expect(out).toMatch(/web: api\s+\^1\.0\.0 — workspace package/);
+  });
+});
+
 describe('format colours and links', () => {
   it('colours flags only when asked', () => {
     const packages = [
       pkg({ name: 'd', deprecated: 'gone', flags: ['deprecated'] }),
       pkg({ name: 'm', majorBump: true, flags: ['outdated'] }),
     ];
-    const render = (color: boolean) =>
-      formatTable(makeResult(packages), { onlyProblems: false, now, color });
+    const render = (color: boolean) => formatTable(makeResult(packages), { all: true, now, color });
     const plain = render(false);
     const coloured = render(true);
     // eslint-disable-next-line no-control-regex
@@ -268,7 +403,7 @@ describe('format colours and links', () => {
       flags: ['outdated'],
     });
     const out = formatTable(makeResult([lagging, behind]), {
-      onlyProblems: false,
+      all: true,
       now,
       color: true,
     });
@@ -277,7 +412,7 @@ describe('format colours and links', () => {
     expect(out).toContain('\u001b[31mbehind\u001b[39m');
     expect(out).toContain('\u001b[32m1.1.0\u001b[39m');
     expect(out).toContain('\u001b[35m2.0.0\u001b[39m');
-    expect(out).toContain('\u001b[2mnode_modules/lag');
+    expect(out).toContain('\u001b[2mdemo');
   });
 
   it('links npm and repository labels only when colour is on', () => {
@@ -286,8 +421,7 @@ describe('format colours and links', () => {
       pkg({ name: 'pc', queriedName: 'picocolors', repository: 'https://example.org/pc' }),
       pkg({ name: 'bare' }),
     ];
-    const render = (color: boolean) =>
-      formatTable(makeResult(packages), { onlyProblems: false, now, color });
+    const render = (color: boolean) => formatTable(makeResult(packages), { all: true, now, color });
     const link = (url: string, text: string) => `\u001b]8;;${url}\u001b\\${text}\u001b]8;;\u001b\\`;
     const npm = (name: string) => `https://www.npmjs.com/package/${name}`;
 

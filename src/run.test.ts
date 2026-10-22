@@ -78,7 +78,7 @@ describe('run output', () => {
     const parsed = parse(result.stdout);
 
     expect(result.code).toBe(EExitCode.OK);
-    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.schemaVersion).toBe(2);
     expect(Object.keys(parsed)).toStrictEqual(
       expect.arrayContaining(['packages', 'summary', 'skipped'])
     );
@@ -88,7 +88,7 @@ describe('run output', () => {
 
   it('table mode keeps package.json order', async () => {
     const { dir, runner } = mixed();
-    const { stdout } = await exec([], dir, runner);
+    const { stdout } = await exec(['--all'], dir, runner);
     const at = (name: string): number => stdout.search(new RegExp(`^${name} `, 'm'));
 
     expect(at('dd')).toBeGreaterThan(0);
@@ -98,14 +98,24 @@ describe('run output', () => {
     expect(stdout).not.toContain('"schemaVersion"');
   });
 
-  it('only-problems affects table only', async () => {
+  it('all affects table only', async () => {
     const { dir, runner } = mixed();
-    const json = parse((await exec(['--only-problems', '--json'], dir, runner)).stdout);
-    const table = (await exec(['--only-problems'], dir, runner)).stdout;
+    const json = parse((await exec(['--json'], dir, runner)).stdout);
+    const table = (await exec([], dir, runner)).stdout;
+    const full = (await exec(['--all'], dir, runner)).stdout;
 
     expect(json.packages.map((p: Pick<IPackageResult, 'name'>) => p.name)).toContain('aa');
     expect(table).not.toMatch(/^aa /m);
     expect(table).toMatch(/^bb /m);
+    expect(full).toMatch(/^aa /m);
+    expect(full).toMatch(/^bb /m);
+  });
+
+  it('--only-problems is rejected', async () => {
+    const result = await exec(['--only-problems'], project({ dependencies: { aa: '1.0.0' } }));
+
+    expectFailure(result);
+    expect(result.stderr).toContain('Unknown option');
   });
 });
 
@@ -192,6 +202,27 @@ describe('run options', () => {
   });
 });
 
+describe('run workspaces', () => {
+  it('prints one block per workspace with problems and exits 0', async () => {
+    const dir = project({ name: 'root', private: true, workspaces: ['packages/*'] });
+    for (const name of ['web', 'api']) {
+      const wsDir = path.join(dir, 'packages', name);
+      fs.mkdirSync(wsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(wsDir, 'package.json'),
+        JSON.stringify({ name, dependencies: { ms: '1.0.0' } })
+      );
+    }
+    const runner = fakeRunner({ views: { ms: view(OLD) } });
+    const { stdout, code } = await exec([], dir, runner);
+
+    expect(code).toBe(EExitCode.OK);
+    expect(stdout).toContain('web (1 problem)');
+    expect(stdout).toContain('api (1 problem)');
+    expect(stdout).not.toContain('root (');
+  });
+});
+
 describe('run help and version', () => {
   it.each([['-h'], ['--help']])('help and version: %s lists every option', async (flag) => {
     const result = await run([flag]);
@@ -204,11 +235,12 @@ describe('run help and version', () => {
       '--ignore',
       '--concurrency',
       '--json',
-      '--only-problems',
+      '--all',
       '--fail-on',
     ]) {
       expect(result.stdout).toContain(name);
     }
+    expect(result.stdout).not.toContain('--only-problems');
   });
 
   it.each([['-v'], ['--version']])('help and version: %s prints the version', async (flag) => {
@@ -224,17 +256,17 @@ describe('cac option keys', () => {
   it('cac option keys are accepted', async () => {
     const cli = cac('outdated')
       .option('--stale-after <months>', 'x')
-      .option('--only-problems', 'x')
+      .option('--all', 'x')
       .option('--fail-on <list>', 'x');
     const { options } = cli.parse(
-      ['node', 'outdated', '--stale-after', '3', '--only-problems', '--fail-on', 'stale'],
+      ['node', 'outdated', '--stale-after', '3', '--all', '--fail-on', 'stale'],
       { run: false }
     );
     const dir = project({ dependencies: { aa: '1.0.0' } });
-    const result = await exec(['--stale-after', '3', '--only-problems', '--fail-on', 'stale'], dir);
+    const result = await exec(['--stale-after', '3', '--all', '--fail-on', 'stale'], dir);
 
     expect(Object.keys(options).toSorted()).toStrictEqual(
-      ['--', 'failOn', 'onlyProblems', 'staleAfter'].toSorted()
+      ['--', 'all', 'failOn', 'staleAfter'].toSorted()
     );
     expect(result.code).toBe(EExitCode.OK);
     expect(result.stderr).toBe('');

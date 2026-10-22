@@ -27,16 +27,41 @@ describe('parseOutdated', () => {
   it('package named error is not a failure', () => {
     const out = parseOutdated('{"error":{"current":"1.0.0","wanted":"1.0.0","latest":"2.0.0"}}');
 
-    expect(out).toStrictEqual({ error: { current: '1.0.0', wanted: '1.0.0', latest: '2.0.0' } });
+    expect(out).toStrictEqual({
+      error: [{ current: '1.0.0', wanted: '1.0.0', latest: '2.0.0', dependent: null }],
+    });
   });
 
-  it('missing current and array values', () => {
+  it('object value becomes a one-element array with dependent', () => {
     const out = parseOutdated(
-      '{"a":{"wanted":"1.1.0","latest":"2.0.0"},"b":[{"current":"1.0.0","wanted":"1.0.0","latest":"3.0.0"},{"current":"9.0.0"}]}'
+      '{"a":{"current":"1.0.0","wanted":"1.0.0","latest":"2.0.0","dependent":"ws"}}'
     );
 
-    expect(out.a).toStrictEqual({ current: null, wanted: '1.1.0', latest: '2.0.0' });
-    expect(out.b).toStrictEqual({ current: '1.0.0', wanted: '1.0.0', latest: '3.0.0' });
+    expect(out).toStrictEqual({
+      a: [{ current: '1.0.0', wanted: '1.0.0', latest: '2.0.0', dependent: 'ws' }],
+    });
+  });
+
+  it('array value keeps every dependent in order', () => {
+    const out = parseOutdated(
+      '{"b":[{"current":"1.0.0","wanted":"1.0.0","latest":"3.0.0","dependent":"api"},{"current":"9.0.0","dependent":"ws"}]}'
+    );
+
+    expect(out.b?.map((e) => e.dependent)).toStrictEqual(['api', 'ws']);
+    expect(out.b?.[1]).toStrictEqual({
+      current: '9.0.0',
+      wanted: null,
+      latest: null,
+      dependent: 'ws',
+    });
+  });
+
+  it('entry without dependent yields null', () => {
+    const out = parseOutdated('{"a":{"wanted":"1.1.0","latest":"2.0.0"}}');
+
+    expect(out.a).toStrictEqual([
+      { current: null, wanted: '1.1.0', latest: '2.0.0', dependent: null },
+    ]);
   });
 });
 

@@ -1,6 +1,12 @@
-import { resolve } from 'path';
+import { basename, dirname, relative, resolve, sep } from 'path';
 
-import { readDeps, readInstalledVersion, type IDepEntry } from './deps.ts';
+import {
+  readDeps,
+  readWorkspaces,
+  findInstalled,
+  type IDepEntry,
+  type IWorkspace,
+} from './deps.ts';
 import { parseOutdated, parseView, type IOutdatedEntry, type TViewResult } from './npm.ts';
 import { mapPool } from './pool.ts';
 import { createNpmRunner } from './runner.ts';
@@ -19,12 +25,11 @@ import type {
 const ALL_TYPES: readonly TDepType[] = ['prod', 'dev', 'optional'];
 
 interface IContext {
-  cwd: string;
+  root: string;
   runner: TRunner;
   timeoutMs: number;
   now: Date;
   staleAfterMonths: number;
-  outdated: Record<string, IOutdatedEntry>;
 }
 
 const major = (version: string | null): number | null => {
@@ -53,13 +58,10 @@ const withTimeout = async (work: Promise<string>, ms: number): Promise<string> =
   }
 };
 
-const lookup = async (entry: IDepEntry, ctx: IContext): Promise<TViewResult> => {
-  if (!entry.validName) {
-    return { unknown: 'invalid package name' };
-  }
+const lookup = async (name: string, ctx: IContext): Promise<TViewResult> => {
   const args = [
     'view',
-    entry.queriedName ?? entry.name,
+    name,
     'time',
     'dist-tags',
     'deprecated',
@@ -67,7 +69,7 @@ const lookup = async (entry: IDepEntry, ctx: IContext): Promise<TViewResult> => 
     'repository',
     '--json',
     '--prefix',
-    ctx.cwd,
+    ctx.root,
   ];
   try {
     return parseView(await withTimeout(ctx.runner(args), ctx.timeoutMs));
@@ -78,6 +80,17 @@ const lookup = async (entry: IDepEntry, ctx: IContext): Promise<TViewResult> => 
 
 const outdatedKey = (entry: IDepEntry): string =>
   entry.queriedName === null ? entry.name : `${entry.name}:${entry.specifier.replace(/^npm:/, '')}`;
+
+// Mirrors @npmcli/name-from-folder: npm outdated's `dependent` for a scoped folder is `@scope/base`.
+const folderName = (dir: string): string => {
+  const parent = basename(dirname(dir));
+  return parent.startsWith('@') ? `${parent}/${basename(dir)}` : basename(dir);
+};
+
+// ponytail: dependent is a folder basename, so two workspaces with the same folder name (apps/utils,
+// libs/utils) can't be told apart and the first match wins; tie-break on hit.location under ws.dir if it matters.
+const findHit = (hits: IOutdatedEntry[] | undefined, ws: IWorkspace): IOutdatedEntry | undefined =>
+  hits?.find((h) => h.dependent === null || h.dependent === folderName(ws.dir));
 
 // npm outdated resolves "latest" with the running Node's engines in mind. When the registry's
 // latest differs from what npm settled on (the installed version if it isn't listed), the newer
@@ -122,16 +135,22 @@ const flagsFor = (row: Omit<IPackageResult, 'flags'>, blocked: boolean): TFlag[]
 
 const buildRow = (
   entry: IDepEntry,
+  ws: IWorkspace,
   view: TViewResult,
   hit: IOutdatedEntry | undefined,
   ctx: IContext
 ): IPackageResult => {
   const viewed = 'latest' in view ? view : null;
-  const current = hit?.current ?? readInstalledVersion(ctx.cwd, entry.name);
+  const installed = findInstalled([...new Set([ws.dir, ctx.root])], entry.name);
+  const current = hit?.current ?? installed?.version ?? null;
   const latest = viewed?.latest ?? hit?.latest ?? null;
   const published = viewed ? new Date(viewed.lastPublish) : null;
   const outdated = hit !== undefined;
   const partial = {
+    workspace: ws.name,
+    location: installed
+      ? relative(ctx.root, installed.path).split(sep).join('/')
+      : `node_modules/${entry.name}`,
     name: entry.name,
     queriedName: entry.queriedName,
     type: entry.type,
@@ -165,36 +184,66 @@ const summarise = (packages: IPackageResult[], skipped: number): ISummary => {
   };
 };
 
+const byName = (a: { name: string }, b: { name: string }): number =>
+  a.name < b.name ? -1 : Number(a.name > b.name);
+
 export const check = async (options: ICheckOptions = {}): Promise<ICheckResult> => {
-  const cwd = resolve(options.cwd ?? process.cwd());
+  const root = resolve(options.cwd ?? process.cwd());
   const staleAfterMonths = options.staleAfterMonths ?? 6;
   const now = options.now ?? new Date();
   const runner = options.runner ?? createNpmRunner();
-  const { project, entries, skipped } = readDeps(cwd, {
-    include: options.include ?? ALL_TYPES,
-    ignore: options.ignore ?? [],
-  });
-  const outdated = parseOutdated(await runner(['outdated', '--json', '--prefix', cwd]));
   const ctx: IContext = {
-    cwd,
+    root,
     runner,
     timeoutMs: options.timeoutMs ?? 30_000,
     now,
     staleAfterMonths,
-    outdated,
   };
+  const depOptions = { include: options.include ?? ALL_TYPES, ignore: options.ignore ?? [] };
 
-  const packages = await mapPool(entries, options.concurrency ?? 6, async (entry) =>
-    buildRow(entry, await lookup(entry, ctx), outdated[outdatedKey(entry)], ctx)
+  const members = readWorkspaces(root);
+  const workspaceNames = new Set(members.map((w) => w.name));
+  const rootDeps = readDeps(root, { ...depOptions, workspaceNames });
+  const { project } = rootDeps;
+  const workspaces = [
+    { ws: { name: project, dir: root }, ...rootDeps },
+    ...members.map((ws) => ({ ws, ...readDeps(ws.dir, { ...depOptions, workspaceNames }) })),
+  ];
+  const outdated = parseOutdated(await runner(['outdated', '--json', '--prefix', root]));
+
+  const queried = new Set(
+    workspaces.flatMap(({ entries }) =>
+      entries.filter((e) => e.validName).map((e) => e.queriedName ?? e.name)
+    )
+  );
+  const views = new Map(
+    await mapPool([...queried], options.concurrency ?? 6, async (name) => {
+      return [name, await lookup(name, ctx)] as const;
+    })
   );
 
+  // invalid names never reach `queried`, so a missing view means an invalid name
+  const packages = workspaces.flatMap(({ ws, entries }) =>
+    entries.map((entry) =>
+      buildRow(
+        entry,
+        ws,
+        views.get(entry.queriedName ?? entry.name) ?? { unknown: 'invalid package name' },
+        findHit(outdated[outdatedKey(entry)], ws),
+        ctx
+      )
+    )
+  );
+  const skipped = workspaces.flatMap((w) => w.skipped.sort(byName));
+
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: now.toISOString(),
     staleAfterMonths,
     project,
+    workspaces: workspaces.map((w) => w.ws.name),
     packages,
     summary: summarise(packages, skipped.length),
-    skipped: skipped.sort((a, b) => (a.name < b.name ? -1 : Number(a.name > b.name))),
+    skipped,
   };
 };

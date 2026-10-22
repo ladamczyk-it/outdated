@@ -2,7 +2,7 @@ import pc from 'picocolors';
 
 import { relativeAge } from './time.ts';
 
-import type { ICheckResult, IPackageResult, TDepType, TFlag } from './types.ts';
+import type { ICheckResult, IPackageResult, ISkipped, TDepType, TFlag } from './types.ts';
 
 type TColors = ReturnType<typeof pc.createColors>;
 
@@ -12,7 +12,6 @@ const HEADER = [
   'Current',
   'Wanted',
   'Latest',
-  'Location',
   'Depended by',
   'Last publish',
   'Links',
@@ -54,13 +53,12 @@ const publishText = (pkg: IPackageResult, now: Date): string =>
 
 const linksText = (pkg: IPackageResult): string => (pkg.repository === null ? 'npm' : 'npm / repo');
 
-const toCells = (pkg: IPackageResult, project: string, now: Date): string[] => [
+const toCells = (pkg: IPackageResult, now: Date): string[] => [
   pkg.name,
   pkg.current ?? '-',
   pkg.wanted ?? pkg.current ?? '-',
   pkg.latest ?? '-',
-  `node_modules/${pkg.name}`,
-  project,
+  pkg.workspace,
   publishText(pkg, now),
   linksText(pkg),
 ];
@@ -115,13 +113,12 @@ const linkPaint =
       .map((label, i) => hyperlink(i === 0 ? npmUrl(pkg) : (pkg.repository ?? ''), label))
       .join(' / ');
 
-// Same palette as npm outdated: wanted green, latest magenta, location and dependent dim.
+// Same palette as npm outdated: wanted green, latest magenta, dependent dim.
 const paints = (pkg: IPackageResult, c: TColors, links: boolean): TPaint[] => [
   nameColor(pkg, c),
   plain,
   pkg.outdated ? c.green : plain,
   latestColor(pkg, c),
-  c.dim,
   c.dim,
   plain,
   links ? linkPaint(pkg) : plain,
@@ -148,14 +145,16 @@ const renderRow = (
   return [...painted, flagsCell(pkg, c)].join('  ').trimEnd();
 };
 
+const isOk = (pkg: IPackageResult): boolean => pkg.flags.length === 1 && pkg.flags[0] === 'ok';
+
 const renderTable = (
   packages: IPackageResult[],
-  project: string,
+  result: ICheckResult,
   now: Date,
   c: TColors,
   links: boolean
 ): string[] => {
-  const rows = packages.map((pkg) => ({ pkg, cells: toCells(pkg, project, now) }));
+  const rows = packages.map((pkg) => ({ pkg, cells: toCells(pkg, now) }));
   const widths = HEADER.map((h, i) =>
     Math.max(h.length, ...rows.map((r) => r.cells[i]?.length ?? 0))
   );
@@ -163,14 +162,24 @@ const renderTable = (
     i === HEADER.length - 1 ? h : renderCell(h, widths[i] ?? 0, i, plain)
   );
   const lines = [c.underline(c.bold(header.join('  ')))];
+  const monorepo = result.workspaces.length > 1;
 
-  // Column widths are shared across sections so every table lines up.
-  for (const [type, title] of SECTIONS) {
-    const section = rows.filter((r) => r.pkg.type === type);
+  // Column widths are shared across blocks and sections so every table lines up.
+  for (const ws of monorepo ? result.workspaces : [null]) {
+    const block = rows.filter((r) => ws === null || r.pkg.workspace === ws);
 
-    if (section.length > 0) {
-      lines.push('', c.bold(`${title} (${section.length})`));
-      lines.push(...section.map((r) => renderRow(r.pkg, r.cells, widths, c, links)));
+    if (ws !== null && block.length > 0) {
+      const n = block.filter((r) => !isOk(r.pkg)).length;
+      lines.push('', c.bold(`${ws} (${n} ${n === 1 ? 'problem' : 'problems'})`));
+    }
+
+    for (const [type, title] of SECTIONS) {
+      const section = block.filter((r) => r.pkg.type === type);
+
+      if (section.length > 0) {
+        lines.push('', c.bold(`${title} (${section.length})`));
+        lines.push(...section.map((r) => renderRow(r.pkg, r.cells, widths, c, links)));
+      }
     }
   }
 
@@ -193,25 +202,30 @@ const footer = (result: ICheckResult, c: TColors): string => {
 
 export const formatTable = (
   result: ICheckResult,
-  opts: { onlyProblems: boolean; now: Date; color?: boolean | undefined }
+  opts: { all?: boolean | undefined; now: Date; color?: boolean | undefined }
 ): string => {
   const color = opts.color ?? pc.isColorSupported;
   const c = pc.createColors(color);
-  const visible = opts.onlyProblems
-    ? result.packages.filter((p) => !(p.flags.length === 1 && p.flags[0] === 'ok'))
-    : result.packages;
-  const lines =
-    result.packages.length === 0
-      ? ['No dependencies found']
-      : renderTable(visible, result.project, opts.now, c, color);
+  const visible = opts.all ? result.packages : result.packages.filter((p) => !isOk(p));
+  const lines: string[] = [];
+
+  if (result.packages.length === 0) {
+    lines.push('No dependencies found');
+  } else if (visible.length === 0) {
+    lines.push('No problems found');
+  } else {
+    lines.push(...renderTable(visible, result, opts.now, c, color));
+  }
 
   lines.push('', footer(result, c));
 
   if (result.skipped.length > 0) {
     lines.push('', c.bold('Skipped:'));
-    const width = Math.max(...result.skipped.map((s) => s.name.length));
+    const label = (s: ISkipped): string =>
+      result.workspaces.length > 1 ? `${s.workspace}: ${s.name}` : s.name;
+    const width = Math.max(...result.skipped.map((s) => label(s).length));
     for (const s of result.skipped) {
-      lines.push(`  ${s.name.padEnd(width)}  ${s.specifier} — ${s.reason}`);
+      lines.push(`  ${label(s).padEnd(width)}  ${s.specifier} — ${s.reason}`);
     }
   }
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { readDeps, readInstalledVersion } from './deps.ts';
+import { findInstalled, readDeps, readWorkspaces } from './deps.ts';
 
 const dirs: string[] = [];
 
@@ -126,15 +126,138 @@ describe('readDeps', () => {
   });
 });
 
-describe('readInstalledVersion', () => {
-  it('reads installed version', () => {
-    const cwd = project({});
-    fs.mkdirSync(path.join(cwd, 'node_modules', 'foo'), { recursive: true });
-    fs.writeFileSync(
-      path.join(cwd, 'node_modules', 'foo', 'package.json'),
-      JSON.stringify({ version: '1.2.3' })
-    );
-    expect(readInstalledVersion(cwd, 'foo')).toBe('1.2.3');
-    expect(readInstalledVersion(cwd, 'absent')).toBeNull();
+const installCopy = (dir: string, name: string, version: string): void => {
+  const folder = path.join(dir, 'node_modules', name);
+  fs.mkdirSync(folder, { recursive: true });
+  fs.writeFileSync(path.join(folder, 'package.json'), JSON.stringify({ version }));
+};
+
+describe('readDeps workspaceNames', () => {
+  const workspaceNames = new Set(['api']);
+
+  it('skips a dep named like a workspace package', () => {
+    const cwd = project({ dependencies: { api: '^1.0.0', other: '^1' } });
+    const { entries, skipped } = readDeps(cwd, { ...all, workspaceNames });
+    expect(entries.map((e) => e.name)).toStrictEqual(['other']);
+    expect(skipped.map((s) => [s.name, s.reason])).toStrictEqual([['api', 'workspace package']]);
+  });
+
+  it('prefers workspace package over unsupported specifier', () => {
+    const cwd = project({ dependencies: { api: 'file:../api' } });
+    const { entries, skipped } = readDeps(cwd, { ...all, workspaceNames });
+    expect(entries).toStrictEqual([]);
+    expect(skipped.map((s) => s.reason)).toStrictEqual(['workspace package']);
+  });
+});
+
+describe('readWorkspaces', () => {
+  const make = (root: string, rel: string, pkg: unknown): string => {
+    const dir = path.join(root, rel);
+    fs.mkdirSync(dir, { recursive: true });
+    if (pkg !== undefined) {
+      fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg));
+    }
+    return dir;
+  };
+
+  it('returns sorted workspaces with absolute dirs', () => {
+    const root = project({ workspaces: ['packages/*'] });
+    make(root, 'packages/b', { name: 'b' });
+    make(root, 'packages/a', { name: 'a' });
+    expect(readWorkspaces(root)).toStrictEqual([
+      { name: 'a', dir: path.join(root, 'packages/a') },
+      { name: 'b', dir: path.join(root, 'packages/b') },
+    ]);
+  });
+
+  it('ignores folders without package.json', () => {
+    const root = project({ workspaces: ['packages/*'] });
+    make(root, 'packages/a', { name: 'a' });
+    make(root, 'packages/empty', undefined);
+    expect(readWorkspaces(root).map((w) => w.name)).toStrictEqual(['a']);
+  });
+
+  it('accepts the { packages } form', () => {
+    const root = project({ workspaces: { packages: ['packages/*'] } });
+    make(root, 'packages/a', { name: 'a' });
+    expect(readWorkspaces(root).map((w) => w.name)).toStrictEqual(['a']);
+  });
+
+  it('honours negated patterns', () => {
+    const root = project({ workspaces: ['packages/*', '!packages/legacy'] });
+    make(root, 'packages/a', { name: 'a' });
+    make(root, 'packages/legacy', { name: 'legacy' });
+    expect(readWorkspaces(root).map((w) => w.name)).toStrictEqual(['a']);
+  });
+
+  it('processes patterns in order and dedupes', () => {
+    const root = project({ workspaces: ['tools/x', 'packages/*', 'packages/a'] });
+    make(root, 'packages/a', { name: 'a' });
+    make(root, 'tools/x', { name: 'x' });
+    expect(readWorkspaces(root).map((w) => w.name)).toStrictEqual(['x', 'a']);
+  });
+
+  it('falls back to folder basename without a name', () => {
+    const root = project({ workspaces: ['packages/*'] });
+    make(root, 'packages/noname', {});
+    expect(readWorkspaces(root).map((w) => w.name)).toStrictEqual(['noname']);
+  });
+
+  it('returns [] without valid workspaces', () => {
+    expect(readWorkspaces(project({}))).toStrictEqual([]);
+    expect(readWorkspaces(project({ workspaces: 'x' }))).toStrictEqual([]);
+  });
+
+  it('never returns anything under node_modules', () => {
+    const root = project({ workspaces: ['**'] });
+    make(root, 'packages/a', { name: 'a' });
+    make(root, 'node_modules/dep', { name: 'dep' });
+    expect(readWorkspaces(root).map((w) => w.name)).toStrictEqual(['a']);
+  });
+});
+
+describe('findInstalled', () => {
+  it('prefers the first dir that has the package', () => {
+    const root = project({});
+    const ws = project({});
+    installCopy(root, 'ms', '1.0.0');
+    installCopy(ws, 'ms', '2.0.0');
+    expect(findInstalled([ws, root], 'ms')).toStrictEqual({
+      path: path.join(ws, 'node_modules', 'ms'),
+      version: '2.0.0',
+    });
+  });
+
+  it('falls back to the later dir', () => {
+    const root = project({});
+    const ws = project({});
+    installCopy(root, 'ms', '1.0.0');
+    expect(findInstalled([ws, root], 'ms')).toStrictEqual({
+      path: path.join(root, 'node_modules', 'ms'),
+      version: '1.0.0',
+    });
+  });
+
+  it('returns null when neither has it', () => {
+    expect(findInstalled([project({}), project({})], 'ms')).toBeNull();
+  });
+
+  it.each(['{}', '{"version":1}'])('returns version null for %s', (body) => {
+    const dir = project({});
+    const folder = path.join(dir, 'node_modules', 'ms');
+    fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(path.join(folder, 'package.json'), body);
+    expect(findInstalled([dir], 'ms')).toStrictEqual({ path: folder, version: null });
+  });
+
+  it('treats an unparseable package.json as not found and falls through', () => {
+    const bad = project({});
+    const good = project({});
+    const folder = path.join(bad, 'node_modules', 'ms');
+    fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(path.join(folder, 'package.json'), 'not json');
+    installCopy(good, 'ms', '3.0.0');
+    expect(findInstalled([bad], 'ms')).toBeNull();
+    expect(findInstalled([bad, good], 'ms')?.version).toBe('3.0.0');
   });
 });

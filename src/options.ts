@@ -9,7 +9,7 @@ export interface ICliOptions {
   ignore: readonly string[];
   concurrency: number;
   json: boolean;
-  onlyProblems: boolean;
+  all: boolean;
   failOn: readonly TProblem[];
 }
 
@@ -26,8 +26,7 @@ const KNOWN_KEYS = new Set([
   'ignore',
   'concurrency',
   'json',
-  'onlyProblems',
-  'only-problems',
+  'all',
   'failOn',
   'fail-on',
   'h',
@@ -137,7 +136,7 @@ export const parseCliOptions = (raw: Record<string, unknown>): ICliOptions => {
     ignore: ignore === undefined ? [] : parseList(ignore, '--ignore'),
     concurrency: parsePositiveInt(raw.concurrency, '--concurrency', 6),
     json: parseBoolean(raw.json, '--json'),
-    onlyProblems: parseBoolean(pick(raw, 'onlyProblems', 'only-problems'), '--only-problems'),
+    all: parseBoolean(raw.all, '--all'),
     failOn: parseChoices(pick(raw, 'failOn', 'fail-on'), '--fail-on', PROBLEMS, []),
   };
 };
