@@ -70,7 +70,7 @@ const execute = async (
   });
   const out = options.json
     ? formatJson(result)
-    : formatTable(result, { onlyProblems: options.onlyProblems, now });
+    : formatTable(result, { all: !options.onlyProblems, now });
 
   return { stdout: out, code: exitCodeFor(result, options.failOn) };
 };

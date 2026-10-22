@@ -45,8 +45,8 @@ const makeResult = (packages: IPackageResult[], skipped: ISkipped[] = []): IChec
   skipped,
 });
 
-const table = (packages: IPackageResult[], onlyProblems = false, skipped: ISkipped[] = []) =>
-  formatTable(makeResult(packages, skipped), { onlyProblems, now });
+const table = (packages: IPackageResult[], all = true, skipped: ISkipped[] = []) =>
+  formatTable(makeResult(packages, skipped), { all, now });
 
 describe('format', () => {
   it('formatJson is the stable document', () => {
@@ -199,10 +199,10 @@ describe('format', () => {
     );
   });
 
-  it('only-problems hides ok rows', () => {
+  it('hides ok rows without all', () => {
     const packages = [pkg({ name: 'bad', flags: ['stale'], stale: true }), pkg({ name: 'fine' })];
-    const hidden = table(packages, true);
-    const shown = table(packages, false);
+    const hidden = table(packages, false);
+    const shown = table(packages, true);
 
     expect(hidden).toContain('bad');
     expect(hidden).not.toContain('fine');
@@ -212,8 +212,38 @@ describe('format', () => {
     expect(shown).toContain('fine');
   });
 
+  it('all shows ok rows alongside problems', () => {
+    const out = table(
+      [pkg({ name: 'bad', deprecated: 'gone', flags: ['deprecated'] }), pkg({ name: 'fine' })],
+      true
+    );
+
+    expect(out).toContain('bad');
+    expect(out).toContain('fine');
+  });
+
+  it('blocked rows are not ok and stay visible without all', () => {
+    const out = table([pkg({ name: 'blocked-pkg', latestNode: '^22', flags: ['blocked'] })], false);
+
+    expect(out).toContain('blocked-pkg');
+  });
+
+  it('only ok rows without all print No problems found, no header, and the footer', () => {
+    const out = table([pkg({ name: 'one' }), pkg({ name: 'two' })], false);
+
+    expect(out).toContain('No problems found');
+    expect(out).not.toContain('Package');
+    expect(out).toContain('2 packages');
+  });
+
+  it('zero packages without all still print No dependencies found', () => {
+    const out = table([], false);
+
+    expect(out).toContain('No dependencies found');
+  });
+
   it('skipped section', () => {
-    const out = table([pkg()], false, [
+    const out = table([pkg()], true, [
       { name: 'local-dep', type: 'prod', specifier: 'file:../x', reason: 'local path' },
     ]);
 
@@ -236,8 +266,7 @@ describe('format colours and links', () => {
       pkg({ name: 'd', deprecated: 'gone', flags: ['deprecated'] }),
       pkg({ name: 'm', majorBump: true, flags: ['outdated'] }),
     ];
-    const render = (color: boolean) =>
-      formatTable(makeResult(packages), { onlyProblems: false, now, color });
+    const render = (color: boolean) => formatTable(makeResult(packages), { all: true, now, color });
     const plain = render(false);
     const coloured = render(true);
     // eslint-disable-next-line no-control-regex
@@ -268,7 +297,7 @@ describe('format colours and links', () => {
       flags: ['outdated'],
     });
     const out = formatTable(makeResult([lagging, behind]), {
-      onlyProblems: false,
+      all: true,
       now,
       color: true,
     });
@@ -286,8 +315,7 @@ describe('format colours and links', () => {
       pkg({ name: 'pc', queriedName: 'picocolors', repository: 'https://example.org/pc' }),
       pkg({ name: 'bare' }),
     ];
-    const render = (color: boolean) =>
-      formatTable(makeResult(packages), { onlyProblems: false, now, color });
+    const render = (color: boolean) => formatTable(makeResult(packages), { all: true, now, color });
     const link = (url: string, text: string) => `\u001b]8;;${url}\u001b\\${text}\u001b]8;;\u001b\\`;
     const npm = (name: string) => `https://www.npmjs.com/package/${name}`;
 

@@ -193,17 +193,22 @@ const footer = (result: ICheckResult, c: TColors): string => {
 
 export const formatTable = (
   result: ICheckResult,
-  opts: { onlyProblems: boolean; now: Date; color?: boolean | undefined }
+  opts: { all?: boolean | undefined; now: Date; color?: boolean | undefined }
 ): string => {
   const color = opts.color ?? pc.isColorSupported;
   const c = pc.createColors(color);
-  const visible = opts.onlyProblems
-    ? result.packages.filter((p) => !(p.flags.length === 1 && p.flags[0] === 'ok'))
-    : result.packages;
-  const lines =
-    result.packages.length === 0
-      ? ['No dependencies found']
-      : renderTable(visible, result.project, opts.now, c, color);
+  const visible = opts.all
+    ? result.packages
+    : result.packages.filter((p) => !(p.flags.length === 1 && p.flags[0] === 'ok'));
+  const lines: string[] = [];
+
+  if (result.packages.length === 0) {
+    lines.push('No dependencies found');
+  } else if (visible.length === 0) {
+    lines.push('No problems found');
+  } else {
+    lines.push(...renderTable(visible, result.project, opts.now, c, color));
+  }
 
   lines.push('', footer(result, c));
 
