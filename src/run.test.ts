@@ -78,7 +78,7 @@ describe('run output', () => {
     const parsed = parse(result.stdout);
 
     expect(result.code).toBe(EExitCode.OK);
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(3);
     expect(Object.keys(parsed)).toStrictEqual(
       expect.arrayContaining(['packages', 'summary', 'skipped'])
     );

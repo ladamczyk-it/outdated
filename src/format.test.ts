@@ -16,6 +16,7 @@ const pkg = (overrides: Partial<IPackageResult> = {}): IPackageResult => ({
   current: '1.0.0',
   wanted: '1.0.0',
   latest: '1.0.0',
+  latestInMajor: '1.0.0',
   outdated: false,
   majorBump: false,
   deprecated: null,
@@ -29,7 +30,7 @@ const pkg = (overrides: Partial<IPackageResult> = {}): IPackageResult => ({
 });
 
 const makeResult = (packages: IPackageResult[], skipped: ISkipped[] = []): ICheckResult => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   generatedAt: now.toISOString(),
   staleAfterMonths: 6,
   project: 'demo',

@@ -12,7 +12,7 @@ const expectRejected = (key: string, values: unknown[], flag: string): void => {
 };
 
 const resultWith = (counts: Partial<Record<TProblem, number>>): ICheckResult => ({
-  schemaVersion: 2,
+  schemaVersion: 3,
   generatedAt: '2026-01-01T00:00:00.000Z',
   staleAfterMonths: 6,
   project: 'demo',

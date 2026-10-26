@@ -59,12 +59,14 @@ const viewJson = (opts: {
   modified?: string;
   deprecated?: string;
   node?: string;
+  versions?: string[];
 }): string =>
   JSON.stringify({
     'dist-tags': { latest: opts.latest ?? '1.0.0' },
     time: { modified: opts.modified ?? RECENT, [opts.latest ?? '1.0.0']: opts.published ?? RECENT },
     ...(opts.deprecated === undefined ? {} : { deprecated: opts.deprecated }),
     ...(opts.node === undefined ? {} : { engines: { node: opts.node } }),
+    ...(opts.versions === undefined ? {} : { versions: opts.versions }),
   });
 
 const outdatedJson = (entries: Record<string, Record<string, string>>): string =>
@@ -173,6 +175,29 @@ describe('check classification', () => {
     expect(row(result, 'small').majorBump).toBe(false);
     expect(row(result, 'small').wanted).toBe('1.9.0');
   });
+
+  it('latestInMajor', async () => {
+    const dir = project({ pin: '1.2.0', zero: '^0.3.1', pre: '^2.0.0', none: '1.0.0' });
+    const result = await run(dir, {
+      outdated: outdatedJson({
+        pin: { current: '1.2.0', wanted: '1.2.0', latest: '2.0.0' },
+        zero: { current: '0.3.1', wanted: '0.3.10', latest: '0.4.0' },
+        pre: { current: '2.0.0', wanted: '2.0.0', latest: '2.0.0' },
+      }),
+      views: {
+        pin: viewJson({ latest: '2.0.0', versions: ['1.2.0', '1.10.0', '1.9.3', '2.0.0'] }),
+        zero: viewJson({ latest: '0.4.0', versions: ['0.3.1', '0.3.10', '0.3.9', '0.4.0'] }),
+        pre: viewJson({ latest: '2.0.0', versions: ['2.0.0', '2.1.0-beta.1', '3.0.0'] }),
+        none: viewJson({ versions: ['1.0.0'] }),
+      },
+    });
+
+    expect(row(result, 'pin').wanted).toBe('1.2.0');
+    expect(row(result, 'pin').latestInMajor).toBe('1.10.0');
+    expect(row(result, 'zero').latestInMajor).toBe('0.3.10');
+    expect(row(result, 'pre').latestInMajor).toBe('2.0.0');
+    expect(row(result, 'none').latestInMajor).toBeNull(); // nothing installed, so current is null
+  });
 });
 
 describe('check failures', () => {
@@ -214,7 +239,7 @@ describe('check failures', () => {
 
     await expect(run(dir, { outdated: '' })).rejects.toThrow(/empty output/);
     await expect(run(dir, { outdated: 'nope' })).rejects.toThrow(/invalid JSON/);
-    await expect(run(dir, { outdated: '{}' })).resolves.toHaveProperty('schemaVersion', 2);
+    await expect(run(dir, { outdated: '{}' })).resolves.toHaveProperty('schemaVersion', 3);
   });
 
   it('invalid names are never queried', async () => {
@@ -246,6 +271,7 @@ describe('check runner interaction', () => {
         'deprecated',
         'engines',
         'repository',
+        'versions',
         '--json',
         '--prefix',
         dir,
@@ -258,6 +284,7 @@ describe('check runner interaction', () => {
         'deprecated',
         'engines',
         'repository',
+        'versions',
         '--json',
         '--prefix',
         dir,
@@ -375,7 +402,7 @@ describe('check results', () => {
       result.packages.filter((p) => p.flags.includes(flag)).length;
     const { summary } = result;
 
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3);
     expect(result.generatedAt).toBe(NOW.toISOString());
     expect(result.staleAfterMonths).toBe(6);
     expect(summary.total).toBe(result.packages.length);
@@ -423,7 +450,7 @@ describe('check workspaces', () => {
     const result = await run(dir, {});
     const name = path.basename(dir);
 
-    expect(result.schemaVersion).toBe(2);
+    expect(result.schemaVersion).toBe(3);
     expect(result.workspaces).toStrictEqual([name]);
     expect(result.packages.map((p) => [p.workspace, p.location])).toStrictEqual([
       [name, 'node_modules/ms'],

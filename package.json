@@ -50,7 +50,8 @@
   "dependencies": {
     "@ladamczyk/qoq-utils": "6.4.2",
     "cac": "7.1.0",
-    "picocolors": "1.1.1"
+    "picocolors": "1.1.1",
+    "semver": "7.8.5"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
@@ -61,6 +62,7 @@
     "@ladamczyk/qoq-knip": "6.4.2",
     "@ladamczyk/qoq-prettier-with-json-sort": "6.4.2",
     "@types/node": "^22",
+    "@types/semver": "7.8.0",
     "@vitest/coverage-v8": "5.0.5",
     "dotenv": "18.0.9",
     "husky": "9.1.7",

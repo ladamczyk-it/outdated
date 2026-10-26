@@ -12,6 +12,7 @@ export type TViewResult =
       deprecated: string | null;
       latestNode: string | null;
       repository: string | null;
+      versions: string[];
     }
   | { unknown: string };
 
@@ -101,6 +102,8 @@ const buildView = (parsed: Record<string, unknown>): TViewResult => {
     deprecated: typeof dep === 'string' && dep !== '' ? dep : null,
     latestNode: nodeRange(parsed.engines),
     repository: repoUrl(parsed.repository),
+    // npm view prints a lone version as a bare string
+    versions: [parsed.versions].flat().filter((v): v is string => typeof v === 'string'),
   };
 };
 

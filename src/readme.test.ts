@@ -47,9 +47,9 @@ describe('README', () => {
     expect(readme).toMatch(/Windows/);
   });
 
-  it('documents schemaVersion 2 and no longer schemaVersion 1', () => {
-    expect(readme).toContain('"schemaVersion": 2');
-    expect(readme).not.toContain('"schemaVersion": 1');
+  it('documents schemaVersion 3 and no longer schemaVersion 2', () => {
+    expect(readme).toContain('"schemaVersion": 3');
+    expect(readme).not.toContain('"schemaVersion": 2');
   });
 
   it('documents workspaces, workspace and location in the JSON schema', () => {
@@ -59,6 +59,7 @@ describe('README', () => {
     expect(schema).toContain('"workspaces"');
     expect(schema).toContain('"workspace"');
     expect(schema).toContain('"location"');
+    expect(schema).toContain('"latestInMajor"');
   });
 
   it('documents the workspace package skip reason', () => {

@@ -1,5 +1,7 @@
 import { basename, dirname, relative, resolve, sep } from 'path';
 
+import semver from 'semver';
+
 import {
   readDeps,
   readWorkspaces,
@@ -32,15 +34,21 @@ interface IContext {
   staleAfterMonths: number;
 }
 
-const major = (version: string | null): number | null => {
-  const match = /^v?(\d+)/.exec(version ?? '');
-  return match ? Number(match[1]) : null;
+const isMajorBump = (current: string | null, latest: string | null): boolean => {
+  const from = semver.coerce(current);
+  const to = semver.coerce(latest);
+  return from !== null && to !== null && to.major > from.major;
 };
 
-const isMajorBump = (current: string | null, latest: string | null): boolean => {
-  const from = major(current);
-  const to = major(latest);
-  return from !== null && to !== null && to > from;
+// Highest stable release in current's major (same minor for 0.x, like ^). Per-version
+// deprecation isn't in `npm view versions`, so deprecated releases still qualify.
+const latestInMajor = (current: string | null, versions: readonly string[]): string | null => {
+  const from = semver.parse(current);
+  if (from === null) {
+    return null;
+  }
+  const range = from.major === 0 ? `0.${from.minor}.x` : `${from.major}.x`;
+  return semver.maxSatisfying([...versions], range);
 };
 
 const withTimeout = async (work: Promise<string>, ms: number): Promise<string> => {
@@ -67,6 +75,7 @@ const lookup = async (name: string, ctx: IContext): Promise<TViewResult> => {
     'deprecated',
     'engines',
     'repository',
+    'versions',
     '--json',
     '--prefix',
     ctx.root,
@@ -158,6 +167,7 @@ const buildRow = (
     current,
     wanted: hit?.wanted ?? null,
     latest,
+    latestInMajor: latestInMajor(current, viewed?.versions ?? []),
     outdated,
     majorBump: outdated && isMajorBump(current, latest),
     deprecated: viewed?.deprecated ?? null,
@@ -237,7 +247,7 @@ export const check = async (options: ICheckOptions = {}): Promise<ICheckResult> 
   const skipped = workspaces.flatMap((w) => w.skipped.sort(byName));
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt: now.toISOString(),
     staleAfterMonths,
     project,

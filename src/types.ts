@@ -26,8 +26,9 @@ export interface IPackageResult {
   current: string | null; // outdated.current ?? node_modules/<name>/package.json version ?? null
   wanted: string | null; // outdated.wanted, else null
   latest: string | null; // view dist-tags.latest ?? outdated.latest ?? null
+  latestInMajor: string | null; // highest non-prerelease view version in current's major (0.x: same minor), else null
   outdated: boolean; // true iff the package is present in `npm outdated`
-  majorBump: boolean; // outdated && latest major > current major (leading-integer regex, no semver dep)
+  majorBump: boolean; // outdated && latest major > current major (semver.coerce, so loose versions still compare)
   deprecated: string | null; // full message, never truncated in data
   latestNode: string | null; // `engines.node` of the latest release when it declares one, else null
   repository: string | null; // https URL of the package's repository from `npm view`, else null
@@ -57,7 +58,7 @@ export interface ISummary {
 }
 
 export interface ICheckResult {
-  schemaVersion: 2;
+  schemaVersion: 3;
   generatedAt: string; // ISO of options.now
   staleAfterMonths: number;
   project: string; // package.json `name`, else the directory name (npm outdated's "Depended by")

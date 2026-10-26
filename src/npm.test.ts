@@ -75,7 +75,15 @@ describe('parseView', () => {
       deprecated: null,
       latestNode: null,
       repository: null,
+      versions: [],
     });
+  });
+
+  it('reads versions, a lone one printed as a string', () => {
+    expect(parseView(view({ versions: ['1.0.0', '2.0.0'] }))).toMatchObject({
+      versions: ['1.0.0', '2.0.0'],
+    });
+    expect(parseView(view({ versions: '2.0.0' }))).toMatchObject({ versions: ['2.0.0'] });
   });
 
   it('normalises repository to an https url', () => {
