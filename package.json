@@ -48,21 +48,21 @@
     "test:coverage": "npm run test -- --coverage"
   },
   "dependencies": {
-    "@ladamczyk/qoq-utils": "6.4.1",
+    "@ladamczyk/qoq-utils": "6.4.2",
     "cac": "7.1.0",
     "picocolors": "1.1.1"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
-    "@ladamczyk/qoq-cli": "6.4.1",
-    "@ladamczyk/qoq-eslint-v9-ts": "6.4.1",
-    "@ladamczyk/qoq-jscpd": "6.4.1",
-    "@ladamczyk/qoq-knip": "6.4.1",
-    "@ladamczyk/qoq-prettier-with-json-sort": "6.4.1",
+    "@ladamczyk/qoq-cli": "6.4.2",
+    "@ladamczyk/qoq-eslint-v9-ts": "6.4.2",
+    "@ladamczyk/qoq-jscpd": "6.4.2",
+    "@ladamczyk/qoq-knip": "6.4.2",
+    "@ladamczyk/qoq-prettier-with-json-sort": "6.4.2",
     "@types/node": "^22",
     "@vitest/coverage-v8": "5.0.5",
-    "dotenv": "18.0.8",
+    "dotenv": "18.0.9",
     "husky": "9.1.7",
     "npm-run-all2": "9.0.4",
     "rimraf": "6.1.3",
