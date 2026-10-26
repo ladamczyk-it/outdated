@@ -1,6 +1,6 @@
 {
   "name": "@ladamczyk/outdated",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Extension of npm outdated: adds last publish, deprecation and staleness",
   "keywords": [
     "cli",

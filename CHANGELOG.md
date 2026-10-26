@@ -1,3 +1,10 @@
+# [2.1.0](https://github.com/ladamczyk-it/outdated/compare/v2.0.0...v2.1.0) (2026-10-26)
+
+
+### Features
+
+* add latestInMajor to JSON packages ([469d5bc](https://github.com/ladamczyk-it/outdated/commit/469d5bc23d8072d8044c1b2854642e26aafdd80c))
+
 # [2.0.0](https://github.com/ladamczyk-it/outdated/compare/v1.1.2...v2.0.0) (2026-10-22)
 
 
