@@ -4,3 +4,6 @@ lib
 coverage
 tsconfig.json
 CHANGELOG.md
+website/build
+website/.docusaurus
+website/node_modules

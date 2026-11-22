@@ -1,0 +1,48 @@
+---
+sidebar_position: 1
+title: Introduction
+description: 'CLI that reports outdated, deprecated and stale npm dependencies: the npm outdated table plus last-publish dates and flags.'
+---
+
+import styles from '@internal/docusaurus-theme/github-button.module.css';
+
+<a
+  href="https://github.com/ladamczyk-it/outdated"
+  target="_blank"
+  rel="noopener noreferrer"
+  className={styles.githubButton}
+>
+  <span aria-hidden="true" className={styles.githubButtonIcon} />
+  <span>GitHub</span>
+</a>
+
+# Outdated
+
+An extension of `npm outdated`: the same table, plus last publish date, deprecation, staleness and repository links. It uses the npm CLI under the hood.
+
+> Content is verified against **`@ladamczyk/outdated` v2.1.1**. See [`CHANGELOG.md`](https://github.com/ladamczyk-it/outdated/blob/main/CHANGELOG.md) to verify accuracy.
+
+## Installation
+
+```bash
+npm install --save-dev @ladamczyk/outdated
+```
+
+## Usage
+
+Run it directly, no install needed:
+
+```bash
+npx -y @ladamczyk/outdated [options]
+```
+
+Or install globally and use the `outdated` command:
+
+```bash
+npm i -g @ladamczyk/outdated
+outdated [options]
+```
+
+## Changelog
+
+Release history lives in the repo — [`CHANGELOG.md`](https://github.com/ladamczyk-it/outdated/blob/main/CHANGELOG.md).

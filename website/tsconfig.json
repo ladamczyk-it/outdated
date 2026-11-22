@@ -1,0 +1,9 @@
+{
+  "extends": "@docusaurus/tsconfig",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "types": ["@docusaurus/module-type-aliases"]
+  },
+  "exclude": [".docusaurus", "build"]
+}
