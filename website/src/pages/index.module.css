@@ -1,0 +1,72 @@
+/*
+ * Hero layout on top of the Theme's hero, tightened so navbar, hero, animation
+ * and features fit one 1440×900 screen: title + button on one row, install full width.
+ */
+
+@media screen and (min-width: 997px) {
+  .hero {
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .heroContent {
+    gap: 1rem;
+  }
+}
+
+.heroTop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 56rem;
+}
+
+.heroText > p {
+  text-align: justify;
+}
+
+.install {
+  width: 100%;
+}
+
+.install > * {
+  margin-bottom: 0;
+}
+
+@media screen and (max-width: 996px) {
+  .hero {
+    padding-bottom: 1.5rem;
+  }
+
+  .heroTop {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+/* shortcut: the Theme's .features adds side padding on top of width: 100% and overflows phones; drop once fixed in @internal/docusaurus-theme */
+.features {
+  width: auto;
+  padding-bottom: 1.5rem;
+}
+
+@media screen and (min-width: 997px) {
+  .feature {
+    padding: 1.25rem;
+  }
+}
+
+@media screen and (max-width: 996px) {
+  .features {
+    padding-bottom: 2rem;
+  }
+}

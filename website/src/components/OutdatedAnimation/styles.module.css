@@ -1,0 +1,207 @@
+/*
+ * One 10s loop: the prompt types in → the header and rows appear one by one →
+ * their flags fade in → the summary prints → pause. Base styles are the final
+ * frame, so reduced motion just switches animations off.
+ * Colours follow src/format.ts (picocolors): red, yellow, cyan, magenta, blue, green.
+ */
+
+.wrapper {
+  --loop: 10s;
+  --muted: oklch(0.6 0.015 var(--cv-hue));
+  --red: oklch(0.7 0.19 20);
+  --yellow: oklch(0.85 0.15 90);
+  --cyan: oklch(0.8 0.12 200);
+  --magenta: oklch(0.72 0.18 330);
+  --blue: oklch(0.7 0.14 255);
+  --green: oklch(0.75 0.16 150);
+
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 4vw 1.25rem;
+  box-sizing: content-box;
+}
+
+.panel {
+  overflow: hidden;
+  border: 1.5px solid var(--cv-color-hex-frame);
+  border-radius: 0.75rem;
+  background: var(--cv-color-charcoal);
+  color: var(--cv-color-near-white);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: clamp(0.68rem, 2.2vw, 0.8rem);
+  box-shadow: 0 20px 50px -20px oklch(0.46 0.19 var(--cv-hue) / 0.45);
+}
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.9rem;
+  border-bottom: 1px solid oklch(1 0 0 / 8%);
+}
+
+.dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: oklch(1 0 0 / 18%);
+}
+
+.terminal {
+  padding: 0.6rem 0.9rem 0.75rem;
+  line-height: 1.6em;
+}
+
+.prompt {
+  width: 25ch;
+  overflow: hidden;
+  color: var(--muted);
+  white-space: nowrap;
+  animation: type var(--loop) infinite both;
+}
+
+/* Package, Current, Latest, Last publish, Flags: the CLI's columns, Current/Latest right-aligned. */
+.row {
+  display: grid;
+  grid-template-columns: 7ch 6ch 6ch 10ch 1fr;
+  column-gap: 2ch;
+  animation: rowIn var(--loop) calc(var(--i) * 0.4s) infinite both;
+}
+
+.header {
+  font-weight: 700;
+  text-decoration: underline;
+  animation-name: headerIn;
+}
+
+.right {
+  text-align: right;
+}
+
+.flags {
+  animation: flagIn var(--loop) calc(var(--i) * 0.4s) infinite both;
+}
+
+.summary {
+  margin-top: 0.4rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  animation: summaryIn var(--loop) infinite both;
+}
+
+.deprecated,
+.majorBump {
+  color: var(--red);
+}
+
+.stale {
+  color: var(--yellow);
+}
+
+.outdated {
+  color: var(--cyan);
+}
+
+.unknown {
+  color: var(--magenta);
+}
+
+.blocked {
+  color: var(--blue);
+}
+
+.ok {
+  color: var(--green);
+}
+
+/* ── Keyframes (percentages of --loop) ─────────────────────────────────── */
+
+@keyframes type {
+  0% {
+    width: 0;
+    animation-timing-function: steps(25, end);
+  }
+  12%,
+  92% {
+    width: 25ch;
+  }
+  96%,
+  100% {
+    width: 0;
+  }
+}
+
+@keyframes headerIn {
+  0%,
+  14% {
+    opacity: 0;
+  }
+  17%,
+  90% {
+    opacity: 1;
+  }
+  94%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rowIn {
+  0%,
+  20% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  24%,
+  90% {
+    opacity: 1;
+    transform: none;
+  }
+  94%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes flagIn {
+  0%,
+  32% {
+    opacity: 0;
+  }
+  38%,
+  90% {
+    opacity: 1;
+  }
+  94%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes summaryIn {
+  0%,
+  50% {
+    opacity: 0;
+  }
+  53%,
+  90% {
+    opacity: 1;
+  }
+  94%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media screen and (max-width: 996px) {
+  .wrapper {
+    padding: 0 1.5rem 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrapper * {
+    animation: none !important;
+  }
+}
