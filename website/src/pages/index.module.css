@@ -15,22 +15,25 @@
 }
 
 .heroTop {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 1rem;
   width: 100%;
 }
 
+/* Title spans the row; tagline and button share the next one. */
 .heroText {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  max-width: 56rem;
+  display: contents;
+}
+
+.heroText > h1 {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .heroText > p {
+  max-width: 56rem;
   text-align: justify;
 }
 
@@ -48,8 +51,8 @@
   }
 
   .heroTop {
-    flex-direction: column;
-    align-items: center;
+    grid-template-columns: 1fr;
+    justify-items: center;
   }
 }
 
