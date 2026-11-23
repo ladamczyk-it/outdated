@@ -65,7 +65,7 @@
   display: grid;
   grid-template-columns: 7ch 6ch 6ch 10ch 1fr;
   column-gap: 2ch;
-  animation: rowIn var(--loop) calc(var(--i) * 0.4s) infinite both;
+  animation: rowIn var(--loop) calc(var(--i, 0) * 0.4s) infinite both;
 }
 
 .header {
@@ -79,7 +79,7 @@
 }
 
 .flags {
-  animation: flagIn var(--loop) calc(var(--i) * 0.4s) infinite both;
+  animation: flagIn var(--loop) calc(var(--i, 0) * 0.4s) infinite both;
 }
 
 .summary {
