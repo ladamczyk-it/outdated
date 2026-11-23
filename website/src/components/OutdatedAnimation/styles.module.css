@@ -1,12 +1,13 @@
 /*
- * One 10s loop: the prompt types in → the header and rows appear one by one →
- * their flags fade in → the summary prints → pause. Base styles are the final
- * frame, so reduced motion just switches animations off.
- * Colours follow src/format.ts (picocolors): red, yellow, cyan, magenta, blue, green.
+ * One 12s loop: the command types in → the CLI runs silently while it asks npm
+ * (it prints nothing until done, so nothing is shown) → the whole table and
+ * summary appear at once → hold → reset. Base styles are the final frame, so
+ * reduced motion just switches animations off.
+ * Colours follow src/format.ts (picocolors): red, yellow, cyan, magenta, blue, green, dim.
  */
 
 .wrapper {
-  --loop: 10s;
+  --loop: 12s;
   --muted: oklch(0.6 0.015 var(--cv-hue));
   --red: oklch(0.7 0.19 20);
   --yellow: oklch(0.85 0.15 90);
@@ -15,20 +16,21 @@
   --blue: oklch(0.7 0.14 255);
   --green: oklch(0.75 0.16 150);
 
-  max-width: 720px;
+  /* The hero text and feature boxes share this column: 1100px, 1.5rem gutters on phones. */
+  width: min(1100px, 100% - 3rem);
   margin: 0 auto;
-  padding: 0 4vw 1.25rem;
-  box-sizing: content-box;
+  padding: 0 0 1.25rem;
 }
 
 .panel {
   overflow: hidden;
+  width: 100%;
   border: 1.5px solid var(--cv-color-hex-frame);
   border-radius: 0.75rem;
   background: var(--cv-color-charcoal);
   color: var(--cv-color-near-white);
   font-family: var(--ifm-font-family-monospace);
-  font-size: clamp(0.68rem, 2.2vw, 0.8rem);
+  font-size: clamp(0.66rem, 0.95vw, 0.8rem);
   box-shadow: 0 20px 50px -20px oklch(0.46 0.19 var(--cv-hue) / 0.45);
 }
 
@@ -53,41 +55,53 @@
 }
 
 .prompt {
-  width: 25ch;
+  width: 28ch;
   overflow: hidden;
   color: var(--muted);
   white-space: nowrap;
   animation: type var(--loop) infinite both;
 }
 
-/* Package, Current, Latest, Last publish, Flags: the CLI's columns, Current/Latest right-aligned. */
+.output {
+  animation: outputIn var(--loop) infinite both;
+}
+
+/*
+ * Columns are the CLI's widths (longest value per column, two spaces apart);
+ * Current, Wanted and Latest are right-aligned. Flags is the last column and
+ * wraps like a terminal line would, so the long deprecation message stays whole.
+ */
 .row {
   display: grid;
-  grid-template-columns: 7ch 6ch 6ch 10ch 1fr;
+  grid-template-columns: 10ch 7ch 6ch 6ch 11ch 19ch 10ch minmax(0, 1fr);
   column-gap: 2ch;
-  animation: rowIn var(--loop) calc(var(--i, 0) * 0.4s) infinite both;
 }
 
 .header {
   font-weight: 700;
   text-decoration: underline;
-  animation-name: headerIn;
+}
+
+.section {
+  margin-top: 1.6em;
+  font-weight: 700;
 }
 
 .right {
   text-align: right;
 }
 
-.flags {
-  animation: flagIn var(--loop) calc(var(--i, 0) * 0.4s) infinite both;
+.summary {
+  margin-top: 1.6em;
 }
 
-.summary {
-  margin-top: 0.4rem;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  animation: summaryIn var(--loop) infinite both;
+.muted {
+  color: var(--muted);
+}
+
+.wanted,
+.ok {
+  color: var(--green);
 }
 
 .deprecated,
@@ -95,7 +109,8 @@
   color: var(--red);
 }
 
-.stale {
+.stale,
+.yellow {
   color: var(--yellow);
 }
 
@@ -111,20 +126,16 @@
   color: var(--blue);
 }
 
-.ok {
-  color: var(--green);
-}
-
 /* ── Keyframes (percentages of --loop) ─────────────────────────────────── */
 
 @keyframes type {
   0% {
     width: 0;
-    animation-timing-function: steps(25, end);
+    animation-timing-function: steps(28, end);
   }
-  12%,
+  22%,
   92% {
-    width: 25ch;
+    width: 28ch;
   }
   96%,
   100% {
@@ -132,12 +143,12 @@
   }
 }
 
-@keyframes headerIn {
+@keyframes outputIn {
   0%,
-  14% {
+  38% {
     opacity: 0;
   }
-  17%,
+  42%,
   90% {
     opacity: 1;
   }
@@ -147,56 +158,18 @@
   }
 }
 
-@keyframes rowIn {
-  0%,
-  20% {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  24%,
-  90% {
-    opacity: 1;
-    transform: none;
-  }
-  94%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes flagIn {
-  0%,
-  32% {
-    opacity: 0;
-  }
-  38%,
-  90% {
-    opacity: 1;
-  }
-  94%,
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes summaryIn {
-  0%,
-  50% {
-    opacity: 0;
-  }
-  53%,
-  90% {
-    opacity: 1;
-  }
-  94%,
-  100% {
-    opacity: 0;
-  }
-}
-
+/* Phones: keep the CLI's lines whole and scroll the terminal sideways, as a narrow terminal would. */
 @media screen and (max-width: 996px) {
-  .wrapper {
-    padding: 0 1.5rem 2rem;
+  .terminal {
+    overflow-x: auto;
+  }
+
+  .row {
+    grid-template-columns: repeat(8, max-content);
+  }
+
+  .row > :last-child {
+    white-space: nowrap;
   }
 }
 

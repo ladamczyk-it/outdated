@@ -14,9 +14,13 @@ const config = createConfig({
 });
 const themeConfig = config.themeConfig as ThemeConfig;
 const AUTHOR = 'SPOT SOFT Łukasz Adamczyk';
+// Historical versions live under /docs/<major>.x/; only the current docs are indexed.
+const HISTORICAL_DOCS = '/docs/*.x/**';
+const [docsPreset, docsPresetOptions] = config.presets?.[0] as [string, object];
 
 export default {
   ...config,
+  presets: [[docsPreset, { ...docsPresetOptions, sitemap: { ignorePatterns: [HISTORICAL_DOCS] } }]],
   // detect: a .md page is CommonMark, never MDX, so a generated .md page compiles to no code.
   // Follow-up: the Theme's createConfig takes this over, and the override goes.
   markdown: { ...config.markdown, format: 'detect' },
