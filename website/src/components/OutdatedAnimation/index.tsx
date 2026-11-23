@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { TerminalWindow } from '@internal/docusaurus-theme/TerminalWindow';
+
 import styles from './styles.module.css';
 
 /**
@@ -69,76 +71,65 @@ const LABEL =
   'Animation: outdated runs over a project, prints a table of its problem packages with a flag for each, and a summary line.';
 
 export const OutdatedAnimation = (): ReactNode => (
-  <section className={styles.wrapper}>
-    <div className={styles.panel} role="img" aria-label={LABEL}>
-      <div aria-hidden="true">
-        <div className={styles.titleBar}>
-          <span className={styles.dot} />
-          <span className={styles.dot} />
-          <span className={styles.dot} />
+  <TerminalWindow className={styles.wrapper} label={LABEL}>
+    <div className={styles.terminal}>
+      <div className={styles.prompt}>{PROMPT}</div>
+      <div className={styles.output}>
+        <div className={`${styles.row} ${styles.header}`}>
+          <span>Package</span>
+          <span className={styles.right}>Current</span>
+          <span className={styles.right}>Wanted</span>
+          <span className={styles.right}>Latest</span>
+          <span>Depended by</span>
+          <span>Last publish</span>
+          <span>Links</span>
+          <span>Flags</span>
         </div>
-        <div className={styles.terminal}>
-          <div className={styles.prompt}>{PROMPT}</div>
-          <div className={styles.output}>
-            <div className={`${styles.row} ${styles.header}`}>
-              <span>Package</span>
-              <span className={styles.right}>Current</span>
-              <span className={styles.right}>Wanted</span>
-              <span className={styles.right}>Latest</span>
-              <span>Depended by</span>
-              <span>Last publish</span>
-              <span>Links</span>
-              <span>Flags</span>
+        <div className={styles.section}>dependencies (4)</div>
+        {ROWS.map(
+          ({
+            name,
+            current,
+            wanted,
+            latest,
+            lastPublish,
+            outdated,
+            majorBump,
+            nameClass,
+            flags,
+          }) => (
+            <div key={name} className={styles.row}>
+              <span className={nameClass}>{name}</span>
+              <span className={styles.right}>{current}</span>
+              <span className={outdated ? `${styles.right} ${styles.wanted}` : styles.right}>
+                {wanted}
+              </span>
+              <span className={majorBump ? `${styles.right} ${styles.majorBump}` : styles.right}>
+                {latest}
+              </span>
+              <span className={styles.muted}>demo</span>
+              <span>{lastPublish}</span>
+              <span>npm / repo</span>
+              <span>
+                {flags.map(({ text, className }, i) => (
+                  <span key={text}>
+                    {i > 0 && ' '}
+                    <span className={className}>{text}</span>
+                  </span>
+                ))}
+              </span>
             </div>
-            <div className={styles.section}>dependencies (4)</div>
-            {ROWS.map(
-              ({
-                name,
-                current,
-                wanted,
-                latest,
-                lastPublish,
-                outdated,
-                majorBump,
-                nameClass,
-                flags,
-              }) => (
-                <div key={name} className={styles.row}>
-                  <span className={nameClass}>{name}</span>
-                  <span className={styles.right}>{current}</span>
-                  <span className={outdated ? `${styles.right} ${styles.wanted}` : styles.right}>
-                    {wanted}
-                  </span>
-                  <span
-                    className={majorBump ? `${styles.right} ${styles.majorBump}` : styles.right}
-                  >
-                    {latest}
-                  </span>
-                  <span className={styles.muted}>demo</span>
-                  <span>{lastPublish}</span>
-                  <span>npm / repo</span>
-                  <span>
-                    {flags.map(({ text, className }, i) => (
-                      <span key={text}>
-                        {i > 0 && ' '}
-                        <span className={className}>{text}</span>
-                      </span>
-                    ))}
-                  </span>
-                </div>
-              )
-            )}
-            <div className={styles.summary}>
-              {SUMMARY.map(({ text, className }, i) => (
-                <span key={text}>
-                  {i > 0 && ' · '}
-                  <span className={className}>{text}</span>
-                </span>
-              ))}
-            </div>
-          </div>
+          )
+        )}
+        <div className={styles.summary}>
+          {SUMMARY.map(({ text, className }, i) => (
+            <span key={text}>
+              {i > 0 && ' · '}
+              <span className={className}>{text}</span>
+            </span>
+          ))}
         </div>
       </div>
     </div>
-  </section>
+  </TerminalWindow>
 );
