@@ -84,6 +84,10 @@ sources=""
 for doc in README.md CLAUDE.md AGENTS.md; do
   [ -f "$doc" ] && sources="$sources$doc, "
 done
+for dir in src/ packages/ skills/; do
+  [ -d "$dir" ] && sources="$sources$dir, "
+done
+sources="${sources%, }"
 
 # the Theme's createConfig serves every Tool from https://<repo>.adamczyk.ovh
 site_url="https://${CI_REPO_NAME:-$(basename "$PWD")}.adamczyk.ovh"
