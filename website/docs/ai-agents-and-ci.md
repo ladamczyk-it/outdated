@@ -1,5 +1,5 @@
 ---
-title: Outdated for AI agents and CI pipelines
+title: 'Outdated for AI agents and CI pipelines'
 sidebar_position: 6
 description: 'Use Outdated as a dependency quality gate in CI or for AI coding agents: versioned JSON, --fail-on exit codes, no prompts, and an AGENTS.md snippet.'
 keywords:

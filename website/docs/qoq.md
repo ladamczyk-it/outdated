@@ -1,5 +1,5 @@
 ---
-title: Outdated in qoq, the AI quality gate for JS projects
+title: 'Outdated in qoq, the AI quality gate for JS projects'
 sidebar_position: 7
 description: 'How qoq runs Outdated as its dependency check: qoq --check, npm.checkOutdatedEvery, qoq npm --json, and how the /qoq bump skill plans upgrades from it.'
 keywords: [qoq, qoq-cli, ai quality gate, dependency check, qoq bump, claude code skill]

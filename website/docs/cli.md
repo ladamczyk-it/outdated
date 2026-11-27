@@ -1,5 +1,5 @@
 ---
-title: Outdated CLI options and exit codes
+title: 'Outdated CLI options and exit codes'
 sidebar_position: 2
 description: 'Every Outdated command-line option, from --fail-on and --stale-after to --json and --include, and what exit codes 0, 1 and 2 mean in CI.'
 keywords: [outdated cli, npm outdated options, fail-on, exit codes, stale-after]
