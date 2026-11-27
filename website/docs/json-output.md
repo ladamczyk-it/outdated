@@ -1,7 +1,8 @@
 ---
-title: JSON output
+title: Outdated JSON output schema (schemaVersion 3)
 sidebar_position: 4
-description: The --json output and its schema (schemaVersion 3).
+description: 'The Outdated --json report field by field: schemaVersion 3, per-package flags, latestInMajor, deprecation, repository, summary counts and skipped rows.'
+keywords: [npm outdated json, json schema, dependency report json, latestInMajor, ci]
 ---
 
 When `--json` is used, the output conforms to the following schema (schemaVersion: 3):

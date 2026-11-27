@@ -1,0 +1,48 @@
+# Outdated
+
+> Outdated (@ladamczyk/outdated) is a dependency health check for npm projects. It reports outdated, deprecated and stale npm dependencies as a table, as versioned JSON for CI pipelines and AI coding agents, or through a JavaScript API. It extends npm outdated and is the dependency check inside qoq.
+
+Install and run: `npx -y @ladamczyk/outdated`, or `npm i -g @ladamczyk/outdated` then `outdated`. As a library: `npm install --save-dev @ladamczyk/outdated`. Needs Node ^22.22.2, ^24.15.0 or >=26 and npm 10+. It runs the npm CLI (`npm outdated`, `npm view`), so registry, proxy and auth come from `.npmrc`.
+
+What it adds to npm outdated: the deprecation message, the last publish date of the latest release, a stale flag (no release in N months, default 6), a blocked flag when the latest release needs a newer Node than npm resolved for, latestInMajor (highest non-prerelease version in the current major), npm and repository links, one block per npm workspace, `--fail-on`, and a versioned JSON schema.
+
+Main options:
+- `--json`: print the JSON report (schemaVersion 3) instead of the table
+- `--fail-on <list>`: exit 1 when any of deprecated, stale, outdated, unknown is found
+- `--stale-after <months>`: months without a release before a package is stale (default 6)
+- `--include prod,dev,optional`: dependency types to check (default all)
+- `--ignore <pkgs>`: exact package names to skip
+- `--all`: also show ok packages in the table
+- `--cwd <dir>`, `--concurrency <n>` (default 6), `-h`, `-v`
+
+Exit codes: 0 no `--fail-on` problem found; 1 a `--fail-on` problem was found; 2 usage or runtime error (no package.json, npm not found, invalid options, npm outdated failure).
+
+Flags per package, always in this order: deprecated, stale, outdated, unknown, blocked; or exactly ok. blocked is informational and not accepted by `--fail-on`. unknown means the npm view lookup failed or timed out.
+
+JSON (schemaVersion 3): top level `schemaVersion`, `generatedAt`, `staleAfterMonths`, `project`, `workspaces`, `packages`, `summary`, `skipped`. Each package has `workspace`, `location`, `name`, `queriedName`, `type`, `specifier`, `current`, `wanted`, `latest`, `latestInMajor`, `outdated`, `majorBump`, `deprecated`, `latestNode`, `repository`, `lastPublish`, `stale`, `unknown`, `flags`. `packages` is never filtered; the table hides ok rows unless `--all`.
+
+JavaScript API (ESM only, TypeScript types included): `check(options?)` resolves to the same object `--json` prints; options `cwd`, `staleAfterMonths`, `include`, `ignore`, `concurrency`, `timeoutMs` (default 30000, API only), `runner` (inject npm for tests), `now`. `formatTable(result, { now, all?, color? })` and `formatJson(result)` render the CLI outputs. Exported types: ICheckOptions, ICheckResult, IPackageResult, ISummary, ISkipped, TRunner, TDepType, TFlag, TProblem.
+
+qoq: qoq-cli calls `check()` in-process as the dependency check of `qoq --check`. There it is advisory (never fails the check), throttled by `npm.checkOutdatedEvery` days in qoq.config (default 1, 0 means every run) and skipped with `--skip-npm`. `qoq npm --json` writes this JSON to npm-report.json, which the /qoq bump skill plans upgrades from. To block on dependency problems, run Outdated itself with `--fail-on`.
+
+Config: there is no project config file. The only file is `~/.config/outdated.json` (or `$XDG_CONFIG_HOME/outdated.json`), which stores the opt-in usage-statistics answer. Runs with `--json`, `CI=true` or piped output never prompt and never send statistics; the API never does.
+
+Limits: npm only (pnpm and yarn workspace files are not read); Windows is untested; a timed-out npm view is not killed; two workspaces with the same folder name can't be told apart.
+
+## Docs
+
+- [Outdated: npm dependency health check CLI](https://outdated.adamczyk.ovh/docs/): install, comparison with npm outdated, basic usage and limits
+- [Outdated CLI options and exit codes](https://outdated.adamczyk.ovh/docs/cli): every command-line option and what exit codes 0, 1 and 2 mean
+- [Outdated table output](https://outdated.adamczyk.ovh/docs/output): table columns, sections, workspace blocks, flag colours and links
+- [Outdated JSON output schema](https://outdated.adamczyk.ovh/docs/json-output): the schemaVersion 3 report field by field
+- [Outdated JavaScript API](https://outdated.adamczyk.ovh/docs/javascript-api): check() options, the typed result, formatTable and formatJson
+- [Outdated for AI agents and CI](https://outdated.adamczyk.ovh/docs/ai-agents-and-ci): using it as a dependency quality gate, with an AGENTS.md snippet
+- [Outdated in qoq](https://outdated.adamczyk.ovh/docs/qoq): how qoq --check and the /qoq bump skill use it
+- [How Outdated decides stale, blocked and deprecated](https://outdated.adamczyk.ovh/docs/behaviour): classification rules, aliases and workspaces
+
+## Optional
+
+- [Outdated usage statistics](https://outdated.adamczyk.ovh/docs/usage-statistics): the opt-in prompt and exactly what is sent
+- [GitHub repository](https://github.com/ladamczyk-it/outdated): source, issues and CHANGELOG.md
+- [npm package](https://www.npmjs.com/package/@ladamczyk/outdated): @ladamczyk/outdated
+- [qoq](https://qoq.adamczyk.ovh/): the JavaScript/TypeScript quality suite that runs Outdated

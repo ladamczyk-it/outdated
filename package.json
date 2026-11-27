@@ -1,12 +1,21 @@
 {
   "name": "@ladamczyk/outdated",
   "version": "2.1.1",
-  "description": "Extension of npm outdated: adds last publish, deprecation and staleness",
+  "description": "Dependency health check for npm: outdated, deprecated and stale packages. CLI, JavaScript API and versioned JSON for CI and AI agents.",
   "keywords": [
     "cli",
     "outdated",
     "dependencies",
-    "npm"
+    "npm",
+    "npm-outdated",
+    "dependencies-check",
+    "deprecated",
+    "stale",
+    "ci",
+    "ai-agents",
+    "json",
+    "quality-gate",
+    "qoq"
   ],
   "homepage": "https://github.com/ladamczyk-it/outdated",
   "bugs": {

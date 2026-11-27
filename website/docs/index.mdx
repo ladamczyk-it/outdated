@@ -1,7 +1,16 @@
 ---
 sidebar_position: 1
-title: Introduction
-description: 'CLI that reports outdated, deprecated and stale npm dependencies: the npm outdated table plus last-publish dates and flags.'
+title: 'Outdated: npm dependency health check CLI'
+description: 'Outdated finds outdated, deprecated and stale npm dependencies: the npm outdated table plus last publish, JSON for CI and AI agents, and a JS API.'
+keywords:
+  [
+    npm outdated,
+    deprecated npm packages,
+    stale dependencies,
+    dependency check,
+    npm dependency audit,
+    ci quality gate,
+  ]
 ---
 
 import styles from '@internal/docusaurus-theme/github-button.module.css';
@@ -18,30 +27,63 @@ import styles from '@internal/docusaurus-theme/github-button.module.css';
 
 # Outdated
 
-An extension of `npm outdated`: the same table, plus last publish date, deprecation, staleness and repository links. It uses the npm CLI under the hood.
+Outdated is a dependency health check for npm projects. It prints the `npm outdated` table plus each package's deprecation message, last publish date, staleness and releases your Node can't run. The same report is available as versioned JSON for CI and AI agents, and as a JavaScript API. It uses the npm CLI under the hood, so registry, proxy and auth settings come from your `.npmrc`.
 
 > Content is verified against **`@ladamczyk/outdated` v2.1.1**. See [`CHANGELOG.md`](https://github.com/ladamczyk-it/outdated/blob/main/CHANGELOG.md) to verify accuracy.
 
 ## Installation
 
+Run it directly, no install needed:
+
+```bash
+npx -y @ladamczyk/outdated
+```
+
+Or install it globally and use the `outdated` command:
+
+```bash
+npm i -g @ladamczyk/outdated
+outdated
+```
+
+To use the [JavaScript API](./javascript-api.md), or to pin the version CI runs, add it as a dev dependency:
+
 ```bash
 npm install --save-dev @ladamczyk/outdated
 ```
 
+It needs Node `^22.22.2`, `^24.15.0` or `>=26` and npm 10 or later.
+
+## Outdated vs npm outdated
+
+| What you get                                | `npm outdated` | `outdated`                   |
+| ------------------------------------------- | -------------- | ---------------------------- |
+| Current, wanted and latest versions         | yes            | yes                          |
+| Deprecation message of the latest release   | no             | yes, flag `deprecated`       |
+| Last publish date of the latest release     | no             | yes, `Last publish`          |
+| Stale packages (no release in N months)     | no             | yes, `--stale-after`         |
+| Latest release blocked by your Node version | no             | yes, flag `blocked`          |
+| Highest version within the current major    | no             | yes, `latestInMajor` in JSON |
+| npm and repository links                    | no             | yes                          |
+| Fail the run on chosen problems             | no             | yes, `--fail-on`             |
+| Versioned JSON schema                       | no             | yes, `schemaVersion: 3`      |
+| One block per npm workspace                 | no             | yes                          |
+| JavaScript API                              | no             | yes, `check()`               |
+
 ## Usage
 
-Run it directly, no install needed:
-
 ```bash
-npx -y @ladamczyk/outdated [options]
+npx -y @ladamczyk/outdated                       # table of problems only
+npx -y @ladamczyk/outdated --all                 # every package
+npx -y @ladamczyk/outdated --json                # versioned JSON
+npx -y @ladamczyk/outdated --fail-on deprecated  # exit 1 on any deprecated package
 ```
 
-Or install globally and use the `outdated` command:
+See [Command line](./cli.md) for every option, [AI agents and CI](./ai-agents-and-ci.md) for using it as a gate, and [qoq integration](./qoq.md) for how qoq runs it.
 
-```bash
-npm i -g @ladamczyk/outdated
-outdated [options]
-```
+## Limits
+
+Only npm is supported: pnpm and yarn workspace files are not read. Windows behaviour is untested.
 
 ## Changelog
 

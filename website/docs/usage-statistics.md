@@ -1,7 +1,8 @@
 ---
-title: Usage statistics
-sidebar_position: 6
-description: What outdated counts, and only with your consent.
+title: Outdated usage statistics and privacy
+sidebar_position: 9
+description: 'What Outdated counts, and only with your consent: the opt-in prompt, the one constant it sends, what is never sent, and why CI and JSON runs never count.'
+keywords: [outdated privacy, opt-in telemetry, usage statistics, npm cli telemetry]
 ---
 
 Opt-in, off until a human says yes. The first interactive run asks; the answer is stored as `stats: true|false` in `~/.config/outdated.json` (or `$XDG_CONFIG_HOME/outdated.json`) and never asked again — edit or delete the key to change it. Runs that can't ask (`CI=true`, a pipe, `--json`) are never prompted and never counted.
