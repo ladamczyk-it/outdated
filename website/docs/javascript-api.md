@@ -1,5 +1,5 @@
 ---
-title: Outdated JavaScript API for npm dependency checks
+title: 'Outdated JavaScript API for npm dependency checks'
 sidebar_position: 5
 description: 'How to call Outdated from JavaScript or TypeScript: check() options, the typed ICheckResult, and formatTable and formatJson for printing reports.'
 keywords:
