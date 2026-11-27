@@ -1,8 +1,11 @@
 ---
-title: Behaviour notes
-sidebar_position: 5
-description: What outdated's flags and fields mean, and where npm's behaviour shows through.
+title: How Outdated decides stale, blocked and deprecated
+sidebar_position: 8
+description: 'How Outdated classifies npm dependencies: why lastPublish ignores time.modified, when a package is blocked by Node, latestInMajor, aliases and workspaces.'
+keywords: [stale npm packages, deprecated npm packages, engines node, npm workspaces, npm aliases]
 ---
+
+These notes explain how Outdated decides that a dependency is stale, deprecated, outdated, blocked or unknown, and where the npm CLI's own behaviour shows through.
 
 **Age is a signal, not a verdict.** The `lastPublish` date indicates inactivity, not necessarily abandonment. Regularly maintained packages may have long gaps between releases.
 

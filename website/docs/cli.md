@@ -1,8 +1,11 @@
 ---
-title: Command line
+title: Outdated CLI options and exit codes
 sidebar_position: 2
-description: The outdated command, its options and exit codes.
+description: 'Every Outdated command-line option, from --fail-on and --stale-after to --json and --include, and what exit codes 0, 1 and 2 mean in CI.'
+keywords: [outdated cli, npm outdated options, fail-on, exit codes, stale-after]
 ---
+
+The `outdated` command checks the npm project in the current folder and prints a table of dependency problems. Its options choose what to check, how to report it and which problems fail the run.
 
 ```bash
 outdated [options]

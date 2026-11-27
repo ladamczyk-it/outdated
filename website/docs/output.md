@@ -1,7 +1,8 @@
 ---
-title: Table output
+title: Outdated table output: columns, flags and links
 sidebar_position: 3
-description: The table outdated prints, its columns, sections, flags and links.
+description: 'What the Outdated table shows: npm outdated columns plus Last publish, Links and Flags, dependency-type sections, workspace blocks and colours.'
+keywords: [npm outdated table, dependency report, deprecated flag, stale flag, npm workspaces]
 ---
 
 The table mirrors `npm outdated` (`Package`, `Current`, `Wanted`, `Latest`, `Depended by`; `Location` is left out to keep rows short — it is in `--json`) and adds `Last publish`, `Links` and `Flags` at the end. It is split into `dependencies`, `devDependencies` and `optionalDependencies` sections (empty ones are omitted); packages keep their `package.json` order and the columns line up across sections. `Wanted` falls back to `Current` for packages `npm outdated` does not list. Only problem rows are shown by default; `--all` shows every package too. At an npm workspaces root the table has one block per workspace, headed `<name> (N problems)` (`1 problem` when singular), and `Depended by` is that workspace.

@@ -1,6 +1,10 @@
 # @ladamczyk/outdated
 
-An extension of `npm outdated`: the same table, plus last publish date, deprecation, staleness and repository links. It uses the npm CLI under the hood.
+A dependency health check for npm projects: outdated, deprecated and stale packages, as a CLI, a JavaScript API and versioned JSON for CI and AI agents.
+
+It extends `npm outdated`: the same table, plus last publish date, deprecation, staleness, releases your Node can't run and repository links. It uses the npm CLI under the hood. It is also the dependency check inside [qoq](https://qoq.adamczyk.ovh/).
+
+Docs: [outdated.adamczyk.ovh](https://outdated.adamczyk.ovh/)
 
 ## Usage
 
@@ -123,6 +127,40 @@ Note that the table hides ok packages unless `--all`, but the JSON `packages` ar
 **Windows behaviour is untested/unverified.**
 
 Only the npm CLI is used. Registry, proxy, authentication, and certificate settings are inherited from `.npmrc`.
+
+## JavaScript API
+
+The package is ESM-only and ships TypeScript declarations. `check()` runs the same check as the CLI and resolves to the object `--json` prints:
+
+```ts
+import { check, formatTable } from '@ladamczyk/outdated';
+
+const result = await check({ cwd: '.', staleAfterMonths: 12, include: ['prod'] });
+if (result.summary.deprecated > 0) {
+  process.stdout.write(formatTable(result, { now: new Date() }));
+  process.exitCode = 1;
+}
+```
+
+- `check(options?)` — options `cwd`, `staleAfterMonths`, `include`, `ignore`, `concurrency`, plus library-only `timeoutMs` (default `30000`), `runner` (inject `npm` for tests) and `now`. Rejects when `package.json` can't be read, npm can't start or `npm outdated` output can't be parsed; a failed lookup for one package only flags that row `unknown`.
+- `formatTable(result, { now, all?, color? })` and `formatJson(result)` render the CLI's two outputs.
+- Types: `ICheckOptions`, `ICheckResult`, `IPackageResult`, `ISummary`, `ISkipped`, `TRunner`, `TDepType`, `TFlag`, `TProblem`.
+
+The API never prompts and never sends usage statistics. Full reference: [JavaScript API](https://outdated.adamczyk.ovh/docs/javascript-api).
+
+## AI agents and CI
+
+`--json` is a versioned contract (schemaVersion 3), `--fail-on` decides which problems exit `1`, and runs with `--json`, `CI=true` or piped output are never prompted. A gate that fails on deprecated packages and anything without a release in a year:
+
+```bash
+npx -y @ladamczyk/outdated --fail-on deprecated,stale --stale-after 12
+```
+
+For agents, read the JSON rather than the table: `deprecated` says what to use instead, `latestInMajor` is the safe in-major target, `majorBump` marks a separate change, `repository` is where the changelog lives, and `blocked` with `latestNode` means the latest needs a newer Node. An `AGENTS.md` snippet is in [AI agents and CI](https://outdated.adamczyk.ovh/docs/ai-agents-and-ci).
+
+## qoq
+
+[qoq](https://qoq.adamczyk.ovh/) runs Outdated in-process as the dependency check of `qoq --check`. There it is advisory: it never fails the check, runs at most every `npm.checkOutdatedEvery` days and is skipped with `--skip-npm`. `qoq npm --json` writes this package's JSON to `npm-report.json`, which the `/qoq bump` skill plans dependency upgrades from. To block on dependency problems, run Outdated with `--fail-on`. More in [qoq integration](https://outdated.adamczyk.ovh/docs/qoq).
 
 ## Anonymous usage stats
 
