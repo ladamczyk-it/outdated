@@ -1,7 +1,8 @@
 ---
-title: 'Outdated for AI agents and CI pipelines'
+title: 'Dependency quality gate for AI agents and CI'
+sidebar_label: 'AI agents and CI'
 sidebar_position: 6
-description: 'Use Outdated as a dependency quality gate in CI or for AI coding agents: versioned JSON, --fail-on exit codes, no prompts, and an AGENTS.md snippet.'
+description: 'Use it as a dependency quality gate in CI or for AI coding agents: versioned JSON, --fail-on exit codes, no prompts, and an AGENTS.md snippet.'
 keywords:
   [
     dependency quality gate,
@@ -13,7 +14,7 @@ keywords:
   ]
 ---
 
-Outdated works as a dependency quality gate for CI pipelines and AI coding agents such as Claude Code, Codex or Cursor. `--json` gives a versioned report to read, `--fail-on` turns chosen problems into a non-zero exit code, and a JSON run never stops to ask anything.
+A dependency quality gate for CI pipelines and AI coding agents such as Claude Code, Codex or Cursor. `--json` gives a versioned report to read, `--fail-on` turns chosen problems into a non-zero exit code, and a JSON run never stops to ask anything.
 
 ## The contract
 
@@ -55,4 +56,4 @@ Tools that run in Node can skip the subprocess and call [`check()`](./javascript
 
 ## Inside qoq
 
-[qoq](https://qoq.adamczyk.ovh/) runs Outdated as the dependency check of `qoq --check`, and its `/qoq bump` skill plans dependency upgrades from Outdated's JSON. See [qoq integration](./qoq.md).
+[qoq](https://qoq.adamczyk.ovh/) runs it as the dependency check of `qoq --check`, and its `/qoq bump` skill plans dependency upgrades from this JSON. See [qoq integration](./qoq.md).

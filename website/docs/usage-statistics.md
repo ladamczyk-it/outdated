@@ -1,7 +1,8 @@
 ---
-title: 'Outdated usage statistics and privacy'
+title: 'Usage statistics and privacy'
+sidebar_label: 'Usage statistics'
 sidebar_position: 9
-description: 'What Outdated counts, and only with your consent: the opt-in prompt, the one constant it sends, what is never sent, and why CI and JSON runs never count.'
+description: 'What gets counted, and only with your consent: the opt-in prompt, the one constant it sends, what is never sent, and why CI and JSON runs never count.'
 keywords: [outdated privacy, opt-in telemetry, usage statistics, npm cli telemetry]
 ---
 
