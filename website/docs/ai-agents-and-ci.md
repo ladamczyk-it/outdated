@@ -21,7 +21,7 @@ A dependency quality gate for CI pipelines and AI coding agents such as Claude C
 - **Versioned JSON.** `--json` prints one object following [schemaVersion 3](./json-output.md). Every row carries `flags`, the reason for each flag (`deprecated` message, `unknown` reason, `latestNode`), plus `latestInMajor` and `repository`, which tell an agent the safe in-major target and where to read the changelog.
 - **Exit codes.** `0` when no `--fail-on` problem is found, `1` when one is, `2` on a usage or runtime error (no `package.json`, npm not found, invalid options, `npm outdated` failing).
 - **Gate policy.** `--fail-on` takes any of `deprecated`, `stale`, `outdated`, `unknown`, comma-separated. One matching row is enough to exit `1`. `blocked` is informational and can't fail a run.
-- **Never interactive.** Runs with `--json`, with `CI=true` or with output piped are never prompted and never send usage statistics.
+- **Never interactive.** Runs with `--json`, with `CI=true` or with output piped are never prompted, and `--json` runs never send usage statistics.
 - **Plain output when piped.** Colours and terminal hyperlinks turn off when output isn't a terminal or `NO_COLOR` is set; `--json` never contains them.
 
 ## CI example
