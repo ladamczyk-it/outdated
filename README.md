@@ -164,7 +164,7 @@ For agents, read the JSON rather than the table: `deprecated` says what to use i
 
 ## Anonymous usage stats
 
-Opt-in, off until a human says yes. The first interactive run asks; the answer is stored as `stats: true|false` in `~/.config/outdated.json` (or `$XDG_CONFIG_HOME/outdated.json`) and never asked again — edit or delete the key to change it. Runs that can't ask (`CI=true`, a pipe, `--json`) are never prompted and never counted.
+Opt-in, off until a human says yes. The first interactive run asks; the answer is stored as `stats: true|false` in `~/.config/outdated.json` (or `$XDG_CONFIG_HOME/outdated.json`) and never asked again — edit or delete the key to change it. Runs that can't ask (`CI=true`, a pipe, `--json`) are never prompted. `--json` runs are never counted; other runs are counted only when `stats: true` is already stored, which on a CI machine usually means nobody answered and nothing is sent.
 
 A counted run posts one constant to `https://stats.adamczyk.ovh` and nothing else:
 

@@ -2,11 +2,11 @@
 title: 'Usage statistics and privacy'
 sidebar_label: 'Usage statistics'
 sidebar_position: 9
-description: 'What gets counted, and only with your consent: the opt-in prompt, the one constant it sends, what is never sent, and why CI and JSON runs never count.'
+description: 'What gets counted, and only with your consent: the opt-in prompt, the one constant it sends, what is never sent, and which runs are never counted.'
 keywords: [outdated privacy, opt-in telemetry, usage statistics, npm cli telemetry]
 ---
 
-Opt-in, off until a human says yes. The first interactive run asks; the answer is stored as `stats: true|false` in `~/.config/outdated.json` (or `$XDG_CONFIG_HOME/outdated.json`) and never asked again — edit or delete the key to change it. Runs that can't ask (`CI=true`, a pipe, `--json`) are never prompted and never counted.
+Opt-in, off until a human says yes. The first interactive run asks; the answer is stored as `stats: true|false` in `~/.config/outdated.json` (or `$XDG_CONFIG_HOME/outdated.json`) and never asked again — edit or delete the key to change it. Runs that can't ask (`CI=true`, a pipe, `--json`) are never prompted. `--json` runs are never counted; other runs are counted only when `stats: true` is already stored, which on a CI machine usually means nobody answered and nothing is sent.
 
 ![Outdated monthly usage — runs per month](https://adamczyk.ovh/img/stats/outdated.png)
 

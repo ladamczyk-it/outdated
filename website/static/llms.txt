@@ -25,7 +25,7 @@ JavaScript API (ESM only, TypeScript types included): `check(options?)` resolves
 
 qoq: qoq-cli calls `check()` in-process as the dependency check of `qoq --check`. There it is advisory (never fails the check), throttled by `npm.checkOutdatedEvery` days in qoq.config (default 1, 0 means every run) and skipped with `--skip-npm`. `qoq npm --json` writes this JSON to npm-report.json, which the /qoq bump skill plans upgrades from. To block on dependency problems, run Outdated itself with `--fail-on`.
 
-Config: there is no project config file. The only file is `~/.config/outdated.json` (or `$XDG_CONFIG_HOME/outdated.json`), which stores the opt-in usage-statistics answer. Runs with `--json`, `CI=true` or piped output never prompt and never send statistics; the API never does.
+Config: there is no project config file. The only file is `~/.config/outdated.json` (or `$XDG_CONFIG_HOME/outdated.json`), which stores the opt-in usage-statistics answer. Runs with `--json`, `CI=true` or piped output never prompt; `--json` runs are never counted, and other runs only when `stats: true` is already stored. The API never prompts or counts.
 
 Limits: npm only (pnpm and yarn workspace files are not read); Windows is untested; a timed-out npm view is not killed; two workspaces with the same folder name can't be told apart.
 
