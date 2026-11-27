@@ -1,0 +1,42 @@
+# Builds a Tool's Docs site and replaces the vhost root nginx serves, ~/artifacts/<repo>. Runs on pushes to main,
+# which include the release commit and docs.yml's `docs: sync` commit; tags only regenerate the docs (docs.yml).
+# cli-template holds the example site, so it never deploys. Volumes need the repo marked trusted in Woodpecker.
+when:
+  - event: push
+    branch: main
+    evaluate: 'CI_REPO_NAME != "cli-template"'
+  - event: manual
+    evaluate: 'CI_REPO_NAME != "cli-template"'
+
+# Full history: the sitemap's <lastmod> and each doc's "last updated" read the page's last commit date.
+clone:
+  - name: clone
+    image: woodpeckerci/plugin-git
+    settings:
+      partial: false
+      depth: 0
+
+steps:
+  # Holds only the Verdaccio token. Lifecycle scripts stay off, so no package code runs beside it.
+  - name: install
+    image: node:22
+    environment:
+      VERDACCIO_CI_TOKEN:
+        from_secret: verdaccio_ci_token
+    commands:
+      - npm ci --prefix website --ignore-scripts
+
+  # Holds no secret: the Docusaurus build loads the installed packages' code.
+  - name: build
+    image: node:22
+    commands:
+      - npm run build --prefix website
+
+  # Holds no secret and runs only find and cp: the one step that sees the served root.
+  - name: deploy
+    image: node:22
+    commands:
+      - find /usr/build -mindepth 1 -delete
+      - cp -r website/build/. /usr/build/
+    volumes:
+      - /home/joke/artifacts/${CI_REPO_NAME}:/usr/build

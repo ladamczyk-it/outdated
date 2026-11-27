@@ -77,7 +77,7 @@ if [ "$stamp" = v0.0.0 ]; then
 else
   git log "$stamp..$tag" > "$notes/log.txt"
   git diff "$stamp..$tag" > "$notes/diff.patch"
-  scope="The docs were last verified against $stamp; the release is $tag. The release range $stamp..$tag is in $notes/log.txt (git log) and $notes/diff.patch (git diff); read those and CHANGELOG.md to see exactly what changed, and limit your changes to that gap: do not touch or rewrite anything it does not affect."
+  scope="The docs were last verified against $stamp; the release is $tag. The release range $stamp..$tag is in $notes/log.txt (git log) and $notes/diff.patch (git diff); read those and CHANGELOG.md to see exactly what changed, and limit your content changes to that gap: do not touch or rewrite anything it does not affect."
 fi
 
 sources=""
@@ -85,14 +85,48 @@ for doc in README.md CLAUDE.md AGENTS.md; do
   [ -f "$doc" ] && sources="$sources$doc, "
 done
 
-prompt="Update this Tool's documentation site in website/docs.
-$scope
-Source facts from the internal docs (${sources}src/), not from memory.
-You may write only .md under website/docs; in index.mdx change only the stamp line. Never touch website/src/pages: those Static pages belong to the maintainer.
-In website/docs/index.mdx, set the Docs stamp to $tag (the 'Content is verified against' line).
+# the Theme's createConfig serves every Tool from https://<repo>.adamczyk.ovh
+site_url="https://${CI_REPO_NAME:-$(basename "$PWD")}.adamczyk.ovh"
+
+# The prompts' prose is .docs-agent/*.md, synced from cli-template. The rules are what check-docs.sh
+# and publish-docs.sh enforce, so they live here and close every prompt.
+agent=.docs-agent
+[ -f "$agent/docs.md" ] || { echo "$agent/docs.md is missing: sync it from cli-template" >&2; exit 1; }
+rules="You may write only .md under website/docs and the file website/static/llms.txt; in index.mdx change only the stamp line. Never touch website/src/pages: those Static pages belong to the maintainer.
 Pages are plain Docusaurus Markdown: no raw HTML tags, no JSX or MDX components, and no javascript:, data: or vbscript: links; code samples in fenced blocks are fine.
+Front matter holds plain YAML strings and lists only, no backslashes, and no key containing mdx.
 Write lint-clean Markdown, but run no command at all: you have no tool for it, and the script formats and checks your changes after you finish.
 Do not commit or push: the script commits after you finish."
+render() {
+  local text
+  text=$(cat "$1")
+  text=${text//"{{TAG}}"/$tag}
+  text=${text//"{{STAMP}}"/$stamp}
+  text=${text//"{{SCOPE}}"/$scope}
+  text=${text//"{{SOURCES}}"/$sources}
+  text=${text//"{{SITE_URL}}"/$site_url}
+  printf '%s\n%s' "$text" "$rules"
+}
+
+# plugins.txt: one `claude plugin` call per line, split on whitespace and never evaluated
+if [ -f "$agent/plugins.txt" ]; then
+  while read -r line || [ -n "$line" ]; do
+    case "$line" in '' | '#'*) continue ;; esac
+    read -ra plugin_args <<< "$line"
+    claude plugin "${plugin_args[@]}"
+  done < "$agent/plugins.txt"
+fi
+# A plugin's hooks and MCP servers run code beside CLAUDE_CODE_OAUTH_TOKEN, and a skill's allowed-tools
+# grants tools past --allowedTools, so only Markdown-only plugins may stay installed.
+plugins_dir="$HOME/.claude/plugins"
+if [ -d "$plugins_dir" ]; then
+  if [ -n "$(find "$plugins_dir" \( -name hooks.json -o -name .mcp.json \) -print -quit)" ] \
+    || grep -rqE --include=plugin.json '"(hooks|mcpServers)"' "$plugins_dir" \
+    || grep -rqE --include='*.md' '^allowed-tools:' "$plugins_dir"; then
+    echo "an installed plugin brings hooks, MCP servers or allowed-tools; only Markdown skills may run here" >&2
+    exit 1
+  fi
+fi
 
 # under -p every tool outside this list is denied. Each absence closes a way out of website/docs:
 # - Bash(npm run *) would allow publish:full.
@@ -108,7 +142,13 @@ Do not commit or push: the script commits after you finish."
 #   later tool, and an .mdx page compiles to code. With markdown.format 'detect' a .md page is
 #   CommonMark, not code. index.mdx gets Edit only, for its stamp line; publish-docs.sh rejects any other change.
 # Read(./**) still lets Claude read anything in the repo.
-allowed_tools="Read(./**),Read(/$notes/**),Edit(website/docs/**/*.md),Write(website/docs/**/*.md),Edit(website/docs/index.mdx)"
+# - llms.txt is the one file outside website/docs: plain text that nginx serves and nothing loads as code.
+# - Skill: the plugins.txt skills, Markdown only (checked above).
+allowed_tools="Read(./**),Read(/$notes/**),Edit(website/docs/**/*.md),Write(website/docs/**/*.md),Edit(website/docs/index.mdx),Edit(website/static/llms.txt),Write(website/static/llms.txt),Skill"
 
-# claude -p exits 0 even when it gives up, so its exit code proves nothing; the gates that follow are the check
-claude -p --model sonnet "$prompt" --allowedTools "$allowed_tools"
+# claude -p exits 0 even when it gives up, so its exit code proves nothing; the gates that follow are the check.
+# Two passes: the docs first, then SEO and llms.txt over the finished pages (skipped without llms.md).
+claude -p --model sonnet "$(render "$agent/docs.md")" --allowedTools "$allowed_tools"
+if [ -f "$agent/llms.md" ]; then
+  claude -p --model sonnet "$(render "$agent/llms.md")" --allowedTools "$allowed_tools"
+fi

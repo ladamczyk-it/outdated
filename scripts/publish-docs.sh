@@ -10,8 +10,8 @@ tag="${CI_COMMIT_TAG:-}"
 [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "CI_COMMIT_TAG must match vX.Y.Z" >&2; exit 1; }
 [ -n "${GITHUB_TOKEN:-}" ] || { echo "GITHUB_TOKEN is required to publish the docs" >&2; exit 1; }
 
-# same four docs paths as check-docs.sh; keep the two lists in step
-docs_paths=(website/docs website/versioned_docs website/versioned_sidebars website/versions.json)
+# same five docs paths as check-docs.sh; keep the two lists in step
+docs_paths=(website/docs website/versioned_docs website/versioned_sidebars website/versions.json website/static/llms.txt)
 
 fail() { echo "$1" >&2; exit 1; }
 
@@ -132,7 +132,7 @@ else
     || fail "$versions must be main's list with $frozen added first"
 fi
 
-# step 2: the clone's four paths become the workspace's, regular files only
+# step 2: the clone's five paths become the workspace's, regular files only
 for path in "${docs_paths[@]}"; do
   rm -rf -- "$path"
   [ -e "$workspace/$path" ] || continue
@@ -154,7 +154,7 @@ for path in "${docs_paths[@]}"; do
 done
 git add -- "${staged_paths[@]}"
 git -c user.name=docs-bot -c user.email=docs-bot@users.noreply.github.com \
-  commit -q -m "docs: sync to $tag [skip ci]"
+  commit -q -m "docs: sync to $tag"
 
 remote="${PUSH_REMOTE:-https://github.com/${CI_REPO:?CI_REPO is required to push}.git}"
 basic_credential=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)

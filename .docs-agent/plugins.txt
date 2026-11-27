@@ -1,0 +1,3 @@
+# `claude plugin` arguments, one call per line, run in order before the agent starts. For example:
+# marketplace add owner/repo
+# install plugin-name@marketplace-name

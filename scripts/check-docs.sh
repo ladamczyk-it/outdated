@@ -3,8 +3,8 @@
 # code that formatting and building run from Claude's pages can reach none.
 set -euo pipefail
 
-# same four docs paths as publish-docs.sh; keep the two lists in step
-docs_paths=(website/docs website/versioned_docs website/versioned_sidebars website/versions.json)
+# same five docs paths as publish-docs.sh; keep the two lists in step
+docs_paths=(website/docs website/versioned_docs website/versioned_sidebars website/versions.json website/static/llms.txt)
 
 if [ -z "$(git status --porcelain --untracked-files=all -- "${docs_paths[@]}")" ]; then
   echo "no docs change, skip"
@@ -24,11 +24,15 @@ fi
 while IFS= read -r -d '' entry; do
   path="${entry:3}"
   case "$path" in
-    website/docs/index.mdx | website/docs/*.md | website/versioned_docs/* | website/versioned_sidebars/* | website/versions.json) ;;
+    website/docs/index.mdx | website/docs/*.md | website/versioned_docs/* | website/versioned_sidebars/* | website/versions.json | website/static/llms.txt) ;;
     *) echo "$path: only .md pages and website/docs/index.mdx may change under website/docs" >&2; exit 1 ;;
   esac
   [ -f "$path" ] || { echo "$path: not a regular file" >&2; exit 1; }
 done < <(git status --porcelain -z --untracked-files=all -- "${docs_paths[@]}")
+
+# llms.txt (https://llmstxt.org) must open with its one required element, the H1 naming the Tool
+llms=website/static/llms.txt
+[ ! -e "$llms" ] || [ "$(head -c 2 "$llms")" = "# " ] || { echo "$llms must start with a '# <Tool>' heading" >&2; exit 1; }
 
 # qoq and the ESLint templates qoq.website.js loads come from the root node_modules; check holds no secret, and --ignore-scripts skips husky's prepare
 npm ci --ignore-scripts --no-audit --no-fund
