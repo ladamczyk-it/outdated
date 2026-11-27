@@ -178,6 +178,6 @@ Never sent: your dependencies, package.json, paths, versions, findings, the flag
 
 ## Last 12 months usage statistics
 
-Regenerated on each release, for daily updated numbers click on chart or visit [https://adamczyk.ovh/docs/outdated#usage-statistics](https://adamczyk.ovh/docs/outdated#usage-statistics).
+Regenerated on each release, for daily updated numbers click on chart or visit [outdated.adamczyk.ovh/docs/usage-statistics](https://outdated.adamczyk.ovh/docs/usage-statistics).
 
 [![Last 12 months usage statistics](https://adamczyk.ovh/img/stats/outdated.png?date=2026-10-08)](https://adamczyk.ovh/img/stats/outdated.png)
