@@ -1,7 +1,8 @@
 ---
-title: 'Outdated JSON output schema (schemaVersion 3)'
+title: 'JSON output schema (schemaVersion 3)'
+sidebar_label: 'JSON output'
 sidebar_position: 4
-description: 'The Outdated --json report field by field: schemaVersion 3, per-package flags, latestInMajor, deprecation, repository, summary counts and skipped rows.'
+description: 'The --json report field by field: schemaVersion 3, per-package flags, latestInMajor, deprecation, repository, summary counts and skipped rows.'
 keywords: [npm outdated json, json schema, dependency report json, latestInMajor, ci]
 ---
 

@@ -1,7 +1,8 @@
 ---
-title: 'Outdated JavaScript API for npm dependency checks'
+title: 'JavaScript API for npm dependency checks'
+sidebar_label: 'JavaScript API'
 sidebar_position: 5
-description: 'How to call Outdated from JavaScript or TypeScript: check() options, the typed ICheckResult, and formatTable and formatJson for printing reports.'
+description: 'How to run the check from JavaScript or TypeScript: check() options, the typed ICheckResult, and formatTable and formatJson for printing reports.'
 keywords:
   [
     npm outdated api,
@@ -12,7 +13,7 @@ keywords:
   ]
 ---
 
-Outdated's JavaScript API runs the same check as the CLI and returns the result as a typed object, so you can call it in-process instead of starting `outdated --json` and parsing its output. The package is ESM-only and ships its own TypeScript declarations.
+The JavaScript API runs the same check as the CLI and returns the result as a typed object, so you can call it in-process instead of starting `outdated --json` and parsing its output. The package is ESM-only and ships its own TypeScript declarations.
 
 ```bash
 npm install --save-dev @ladamczyk/outdated

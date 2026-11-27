@@ -1,7 +1,8 @@
 ---
-title: 'Outdated table output: columns, flags and links'
+title: 'Table output: columns, flags and links'
+sidebar_label: 'Table output'
 sidebar_position: 3
-description: 'What the Outdated table shows: npm outdated columns plus Last publish, Links and Flags, dependency-type sections, workspace blocks and colours.'
+description: 'What the table shows: npm outdated columns plus Last publish, Links and Flags, dependency-type sections, workspace blocks and colours.'
 keywords: [npm outdated table, dependency report, deprecated flag, stale flag, npm workspaces]
 ---
 
