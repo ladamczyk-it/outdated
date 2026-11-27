@@ -1,5 +1,5 @@
 ---
-title: How Outdated decides stale, blocked and deprecated
+title: 'How Outdated decides stale, blocked and deprecated'
 sidebar_position: 8
 description: 'How Outdated classifies npm dependencies: why lastPublish ignores time.modified, when a package is blocked by Node, latestInMajor, aliases and workspaces.'
 keywords: [stale npm packages, deprecated npm packages, engines node, npm workspaces, npm aliases]
