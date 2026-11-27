@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# The `publish` step: commits the checked docs from <workspace> and pushes them to main.
+# The `publish` step: commits the checked docs from <workspace> and pushes them to the default branch.
 # It holds GITHUB_TOKEN, and the check step before it may have rewritten anything in the
-# workspace (scripts/ and .git/config included), so it runs from a fresh clone of main, runs no
+# workspace (scripts/ and .git/config included), so it runs from a fresh clone of the default branch, runs no
 # git, npm or script in the workspace, and only reads regular files from it.
 set -euo pipefail
 
@@ -76,13 +76,13 @@ stamps_in() { grep -o 'verified against \*\*`[^`]*` v[0-9.]*' "$1" | grep -o 'v[
 stamps=$(stamps_in "$workspace/$index")
 [ "$stamps" = "$tag" ] || fail "$index must carry exactly one Docs stamp, $tag"
 sed -E "s/(verified against \*\*\`[^\`]*\` )v[0-9.]*/\1$tag/" "$index" | cmp -s - "$workspace/$index" \
-  || fail "$index may differ from main only in its Docs stamp"
+  || fail "$index may differ from the default branch only in its Docs stamp"
 
-# The versioned paths may hold only what `docs:version <old major>.x` writes from main, so nothing
-# the check step planted there (an .mdx page, an html sidebar item) reaches main. Build that from
+# The versioned paths may hold only what `docs:version <old major>.x` writes from the default branch, so nothing
+# the check step planted there (an .mdx page, an html sidebar item) reaches it. Build that from
 # the clone, then hold the workspace to it.
 main_stamp=$(stamps_in "$index")
-[[ "$main_stamp" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "main's $index must carry exactly one Docs stamp"
+[[ "$main_stamp" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "the default branch's $index must carry exactly one Docs stamp"
 old_major=${main_stamp#v}
 old_major=${old_major%%.*}
 new_major=${tag#v}
@@ -98,7 +98,7 @@ frozen=
 # update-docs.sh freezes only off a real stamp, never v0.0.0
 if [ "$main_stamp" != v0.0.0 ] && [ "$old_major" != "$new_major" ]; then
   frozen="$old_major.x"
-  [ ! -e "$expected/versioned_docs/version-$frozen" ] || fail "version $frozen is already frozen on main"
+  [ ! -e "$expected/versioned_docs/version-$frozen" ] || fail "version $frozen is already frozen on the default branch"
   cp -R website/docs "$expected/versioned_docs/version-$frozen"
   # shortcut: createConfig sets no sidebarPath, so docs:version writes Docusaurus's DefaultSidebars;
   # if the site gains a sidebars file, derive this from it, or every freeze fails here
@@ -109,7 +109,7 @@ for dir in versioned_docs versioned_sidebars; do
   actual="$workspace/website/$dir"
   [ -e "$actual" ] || actual="$expected/absent"
   diff -rq --no-dereference -- "$expected/$dir" "$actual" > /dev/null \
-    || fail "website/$dir may hold only what docs:version writes${frozen:+ for $frozen} from main"
+    || fail "website/$dir may hold only what docs:version writes${frozen:+ for $frozen} from the default branch"
 done
 versions=website/versions.json
 if [ -z "$frozen" ]; then
@@ -129,7 +129,7 @@ else
       process.exit(1);
     }
   ' "$workspace/$versions" "$frozen" "$versions" > /dev/null 2>&1 \
-    || fail "$versions must be main's list with $frozen added first"
+    || fail "$versions must be the default branch's list with $frozen added first"
 fi
 
 # step 2: the clone's five paths become the workspace's, regular files only
@@ -158,4 +158,4 @@ git -c user.name=docs-bot -c user.email=docs-bot@users.noreply.github.com \
 
 remote="${PUSH_REMOTE:-https://github.com/${CI_REPO:?CI_REPO is required to push}.git}"
 basic_credential=$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)
-git -c http.extraHeader="Authorization: Basic $basic_credential" push -q "$remote" HEAD:refs/heads/main
+git -c http.extraHeader="Authorization: Basic $basic_credential" push -q "$remote" HEAD:refs/heads/${CI_REPO_DEFAULT_BRANCH:-main}

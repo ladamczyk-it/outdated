@@ -36,6 +36,8 @@ llms=website/static/llms.txt
 
 # qoq and the ESLint templates qoq.website.js loads come from the root node_modules; check holds no secret, and --ignore-scripts skips husky's prepare
 npm ci --ignore-scripts --no-audit --no-fund
+npm run build --if-present
+npm rebuild --ignore-scripts
 npm run qoq:fix
 
 tag="${CI_COMMIT_TAG:-}"

@@ -1,9 +1,9 @@
-# Builds a Tool's Docs site and replaces the vhost root nginx serves, ~/artifacts/<repo>. Runs on pushes to main,
+# Builds a Tool's Docs site and replaces the vhost root nginx serves, ~/artifacts/<repo>. Runs on pushes to the default branch,
 # which include the release commit and docs.yml's `docs: sync` commit; tags only regenerate the docs (docs.yml).
 # cli-template holds the example site, so it never deploys. Volumes need the repo marked trusted in Woodpecker.
 when:
   - event: push
-    branch: main
+    branch: ${CI_REPO_DEFAULT_BRANCH}
     evaluate: 'CI_REPO_NAME != "cli-template"'
   - event: manual
     evaluate: 'CI_REPO_NAME != "cli-template"'
