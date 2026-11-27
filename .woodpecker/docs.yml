@@ -1,0 +1,61 @@
+# Regenerates a Tool's Docs site on release tags. cli-template holds the example site, so its tags never run this.
+when:
+  - event: tag
+    evaluate: 'CI_REPO_NAME != "cli-template"'
+
+# Full history and every tag: update-docs.sh diffs <stamp>..<tag>, and both refs must exist.
+clone:
+  - name: clone
+    image: woodpeckerci/plugin-git
+    settings:
+      partial: false
+      depth: 0
+      tags: true
+
+steps:
+  # One trust level per step: each holds only the token its phase needs, and update-docs.sh refuses the others.
+  # Holds only the Verdaccio token. Lifecycle scripts stay off, so no package code runs beside it.
+  - name: install
+    image: node:22
+    environment:
+      VERDACCIO_CI_TOKEN:
+        from_secret: verdaccio_ci_token
+    commands:
+      - bash scripts/update-docs.sh install
+
+  # Holds only the Claude secret. It runs before freeze, so only npm with --ignore-scripts has run in the workspace.
+  # Nothing it writes reaches main until check and publish pass.
+  - name: generate
+    image: node:22
+    environment:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        from_secret: claude_code_oauth_token
+    commands:
+      - export CLAUDE_CODE_OAUTH_TOKEN=$(printf '%s' "$CLAUDE_CODE_OAUTH_TOKEN" | tr -d '\n\r')
+      - bash scripts/update-docs.sh generate
+
+  # Holds no secret: docs:version runs Docusaurus, which loads the installed packages' code. It runs after
+  # generate because that code can rewrite the workspace (update-docs.sh, .claude hooks, .git/config), so no
+  # later step that holds a secret may trust it; publish alone follows with a secret, from a fresh clone.
+  - name: freeze
+    image: node:22
+    commands:
+      - bash scripts/update-docs.sh freeze
+
+  # Holds no secret: it formats and builds what generate wrote, so that code reaches no credential.
+  - name: check
+    image: node:22
+    commands:
+      - bash scripts/check-docs.sh
+
+  # Holds GITHUB_TOKEN only, and runs nothing from the workspace: publish-docs.sh comes from a fresh clone of main.
+  - name: publish
+    image: node:22
+    environment:
+      GITHUB_TOKEN:
+        from_secret: github_token
+    commands:
+      - 'basic_credential=$(printf "x-access-token:%s" "$GITHUB_TOKEN" | base64 -w0)'
+      - 'git -c "http.extraHeader=Authorization: Basic $basic_credential" clone --branch main "https://github.com/$CI_REPO.git" /tmp/publish'
+      - cd /tmp/publish && bash /tmp/publish/scripts/publish-docs.sh "$CI_WORKSPACE"
+    # A deploy step goes here, after publish, once the Docs site has a host to deploy to.

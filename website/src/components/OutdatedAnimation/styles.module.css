@@ -1,0 +1,146 @@
+/*
+ * One 12s loop: the command types in → the CLI runs silently while it asks npm
+ * (it prints nothing until done, so nothing is shown) → the whole table and
+ * summary appear at once → hold → reset. Base styles are the final frame, so
+ * reduced motion just switches animations off.
+ * Colours follow src/format.ts (picocolors): red, yellow, cyan, magenta, blue, green, dim.
+ */
+
+.wrapper {
+  --loop: 12s;
+  --red: oklch(0.7 0.19 20);
+  --yellow: oklch(0.85 0.15 90);
+  --cyan: oklch(0.8 0.12 200);
+  --magenta: oklch(0.72 0.18 330);
+  --blue: oklch(0.7 0.14 255);
+  --green: oklch(0.75 0.16 150);
+
+  /* Tighter than the Theme's frame so the whole table fits one 1440×900 screen. */
+  --tw-font-size: clamp(0.66rem, 0.95vw, 0.8rem);
+  --tw-pad-bottom: 1.25rem;
+  --tw-bar-pad: 0.45rem;
+}
+
+.terminal {
+  padding: 0.6rem 0.9rem 0.75rem;
+  line-height: 1.6em;
+}
+
+.prompt {
+  width: 28ch;
+  overflow: hidden;
+  color: var(--muted);
+  white-space: nowrap;
+  animation: type var(--loop) infinite both;
+}
+
+.output {
+  animation: outputIn var(--loop) infinite both;
+}
+
+/*
+ * Columns are the CLI's widths (longest value per column, two spaces apart);
+ * Current, Wanted and Latest are right-aligned. Flags is the last column and
+ * wraps like a terminal line would, so the long deprecation message stays whole.
+ */
+.row {
+  display: grid;
+  grid-template-columns: 10ch 7ch 6ch 6ch 11ch 19ch 10ch minmax(0, 1fr);
+  column-gap: 2ch;
+}
+
+.header {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.section {
+  margin-top: 1.6em;
+  font-weight: 700;
+}
+
+.right {
+  text-align: right;
+}
+
+.summary {
+  margin-top: 1.6em;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.wanted,
+.ok {
+  color: var(--green);
+}
+
+.deprecated,
+.majorBump {
+  color: var(--red);
+}
+
+.stale,
+.yellow {
+  color: var(--yellow);
+}
+
+.outdated {
+  color: var(--cyan);
+}
+
+.unknown {
+  color: var(--magenta);
+}
+
+.blocked {
+  color: var(--blue);
+}
+
+/* ── Keyframes (percentages of --loop) ─────────────────────────────────── */
+
+@keyframes type {
+  0% {
+    width: 0;
+    animation-timing-function: steps(28, end);
+  }
+  22%,
+  92% {
+    width: 28ch;
+  }
+  96%,
+  100% {
+    width: 0;
+  }
+}
+
+@keyframes outputIn {
+  0%,
+  38% {
+    opacity: 0;
+  }
+  42%,
+  90% {
+    opacity: 1;
+  }
+  94%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Phones: keep the CLI's lines whole and scroll the terminal sideways, as a narrow terminal would. */
+@media screen and (max-width: 996px) {
+  .terminal {
+    overflow-x: auto;
+  }
+
+  .row {
+    grid-template-columns: repeat(8, max-content);
+  }
+
+  .row > :last-child {
+    white-space: nowrap;
+  }
+}
