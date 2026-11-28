@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import Head from '@docusaurus/Head';
+import Link from '@docusaurus/Link';
 import { HomePage } from '@internal/docusaurus-theme/HomePage';
 
 import { OutdatedAnimation } from '../components/OutdatedAnimation';
@@ -40,6 +41,17 @@ const Home = (): ReactNode => (
       <meta content={DESCRIPTION} property="og:description" />
     </Head>
     <OutdatedAnimation />
+    {/* The Theme's opener and features are plain strings, so the crawlable links to qoq and the AI docs live here. */}
+    <section className="container margin-vert--lg">
+      <p>
+        Outdated runs on its own in any npm project. In{' '}
+        <Link href="https://qoq.adamczyk.ovh/">qoq</Link>, the JavaScript/TypeScript quality gate,
+        it is the dependency check behind <code>qoq --check</code> and the <code>/qoq bump</code>{' '}
+        skill: see <Link to="/docs/qoq">Outdated in qoq</Link>. To use it as a quality gate in CI or
+        from an AI coding agent, read <Link to="/docs/ai-agents-and-ci">AI agents and CI</Link>.
+        Agents can start from <Link href="https://outdated.adamczyk.ovh/llms.txt">llms.txt</Link>.
+      </p>
+    </section>
   </HomePage>
 );
 
