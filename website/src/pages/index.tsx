@@ -19,21 +19,41 @@ const FEATURES = [
   },
   {
     title: 'JavaScript API',
-    description:
-      'check() returns the same typed result the CLI prints, so scripts and tools like qoq call it in-process.',
+    description: (
+      <>
+        check() returns the same typed result the CLI prints, so scripts and tools like{' '}
+        <Link to="/docs/qoq">qoq</Link> call it in-process.
+      </>
+    ),
   },
   {
     title: 'Built for CI and AI agents',
-    description:
-      '--json follows a versioned schema, --fail-on turns problems into exit code 1, and JSON runs never prompt.',
+    description: (
+      <>
+        --json follows a versioned schema, --fail-on turns problems into exit code 1, and JSON runs
+        never prompt. See <Link to="/docs/ai-agents-and-ci">AI agents and CI</Link> and{' '}
+        <Link href="https://outdated.adamczyk.ovh/llms.txt">llms.txt</Link>.
+      </>
+    ),
   },
 ];
 
-const OPENER =
-  "npm outdated tells you what's behind. Outdated also tells you what's deprecated, what hasn't shipped in months and what your Node can't run — as a table, as JSON your CI or AI agent can fail on, or from JavaScript. It is also the dependency check inside qoq.";
+const OPENER = (
+  <>
+    npm outdated tells you what&apos;s behind. Outdated also tells you what&apos;s deprecated, what
+    hasn&apos;t shipped in months and what your Node can&apos;t run — as a table, as JSON your CI or
+    AI agent can fail on, or from JavaScript. It runs on its own and is also the dependency check
+    inside <Link href="https://qoq.adamczyk.ovh/">qoq</Link>.
+  </>
+);
 
 const Home = (): ReactNode => (
-  <HomePage features={FEATURES} install="npx -y @ladamczyk/outdated" opener={OPENER}>
+  <HomePage
+    features={FEATURES}
+    heading="Outdated: npm dependency health check"
+    install="npx -y @ladamczyk/outdated"
+    opener={OPENER}
+  >
     <Head>
       <title>{TITLE}</title>
       <meta content={DESCRIPTION} name="description" />
@@ -41,17 +61,6 @@ const Home = (): ReactNode => (
       <meta content={DESCRIPTION} property="og:description" />
     </Head>
     <OutdatedAnimation />
-    {/* The Theme's opener and features are plain strings, so the crawlable links to qoq and the AI docs live here. */}
-    <section className="container margin-vert--lg">
-      <p>
-        Outdated runs on its own in any npm project. In{' '}
-        <Link href="https://qoq.adamczyk.ovh/">qoq</Link>, the JavaScript/TypeScript quality gate,
-        it is the dependency check behind <code>qoq --check</code> and the <code>/qoq bump</code>{' '}
-        skill: see <Link to="/docs/qoq">Outdated in qoq</Link>. To use it as a quality gate in CI or
-        from an AI coding agent, read <Link to="/docs/ai-agents-and-ci">AI agents and CI</Link>.
-        Agents can start from <Link href="https://outdated.adamczyk.ovh/llms.txt">llms.txt</Link>.
-      </p>
-    </section>
   </HomePage>
 );
 
