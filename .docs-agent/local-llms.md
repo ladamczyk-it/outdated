@@ -1,0 +1,1 @@
+In llms.txt, word the qoq line as: '- [qoq](https://qoq.adamczyk.ovh/): the JavaScript/TypeScript quality suite that runs Outdated as the advisory dependency check of qoq --check and feeds qoq npm --json to the /qoq bump skill; details on {{SITE_URL}}/docs/qoq'.
