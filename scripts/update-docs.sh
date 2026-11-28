@@ -101,9 +101,11 @@ Pages are plain Docusaurus Markdown: no raw HTML tags, no JSX or MDX components,
 Front matter holds plain YAML strings and lists only, no backslashes, and no key containing mdx.
 Write lint-clean Markdown, but run no command at all: you have no tool for it, and the script formats and checks your changes after you finish.
 Do not commit or push: the script commits after you finish."
+# $2, the Tool's own .docs-agent/local-*.md, is appended when present: sync never writes or deletes it
 render() {
   local text
   text=$(cat "$1")
+  if [ -f "${2:-}" ]; then text+=$'\n\n'$(cat "$2"); fi
   text=${text//"{{TAG}}"/$tag}
   text=${text//"{{STAMP}}"/$stamp}
   text=${text//"{{SCOPE}}"/$scope}
@@ -152,7 +154,7 @@ allowed_tools="Read(./**),Read(/$notes/**),Edit(website/docs/**/*.md),Write(webs
 
 # claude -p exits 0 even when it gives up, so its exit code proves nothing; the gates that follow are the check.
 # Two passes: the docs first, then SEO and llms.txt over the finished pages (skipped without llms.md).
-claude -p --model sonnet "$(render "$agent/docs.md")" --allowedTools "$allowed_tools"
+claude -p --model sonnet "$(render "$agent/docs.md" "$agent/local-docs.md")" --allowedTools "$allowed_tools"
 if [ -f "$agent/llms.md" ]; then
-  claude -p --model sonnet "$(render "$agent/llms.md")" --allowedTools "$allowed_tools"
+  claude -p --model sonnet "$(render "$agent/llms.md" "$agent/local-llms.md")" --allowedTools "$allowed_tools"
 fi
